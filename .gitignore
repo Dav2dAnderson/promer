@@ -1,0 +1,36 @@
+# Python
+myenv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env
+*.env
+db.sqlite3
+
+# Django
+media/
+staticfiles/
+*.log
+
+# Next.js
+frontend/.next/
+frontend/node_modules/
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# pytest
+.pytest_cache/
+htmlcov/
+.coverage
