@@ -44,18 +44,33 @@ class GitHubWebHookView(views.APIView):
         pusher = payload.get('pusher', {}).get('name')
         commits = payload.get('commits', [])
         repo = payload.get('repository', {}).get('full_name')
-        
-        # branch: "task/login-page" -> task_slug: "login-page"
+
+        print(f"Branch: {branch}")
+        print(f"Pusher: {pusher}")
+        print(f"Commits soni: {len(commits)}")
+
         if not branch.startswith('task/'):
+            print("Branch task/ bilan boshlanmayapti — return")
             return
+        
         task_slug = branch.replace('task/', '')
+        print(f"Task slug: {task_slug}")
 
         try:
             user = User.objects.get(github_username=pusher)
-            task = Task.objects.get(slug=task_slug)
-        except (User.DoesNotExist, Task.DoesNotExist):
+            print(f"User topildi: {user.username}")
+        except User.DoesNotExist:
+            print(f"User topilmadi — github_username: {pusher}")
             return
 
+        try:
+            task = Task.objects.get(slug=task_slug)
+            print(f"Task topildi: {task.title}")
+        except Task.DoesNotExist:
+            print(f"Task topilmadi — slug: {task_slug}")
+            return
+
+        print("Comment yaratilmoqda...")
         commit_messages = '\n'.join([
             f"- [{c['message']}]({c['url']})" for c in commits
         ])
