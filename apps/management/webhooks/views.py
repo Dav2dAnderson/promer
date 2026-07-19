@@ -71,7 +71,16 @@ class GitHubWebHookView(views.APIView):
             return
 
         print("Comment yaratilmoqda...")
-        # comment yaratish kodi
+        commit_messages = '\n'.join([
+            f"- [{c['message']}]({c['url']})" for c in commits
+        ])
+
+        TaskComment.objects.create(
+            task=task,
+            user=user,
+            content=f"**Push qilindi** - '{branch}' ('{repo}')\n\n{commit_messages}",
+            github_url=payload.get('compare')
+        )
 
     def _handle_pull_request(self, payload):
         action = payload.get('action')
