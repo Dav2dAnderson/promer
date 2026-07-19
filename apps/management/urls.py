@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from rest_framework_nested import routers
 
-from .webhooks.views import GithubWebhookView
+from .webhooks.views import GitHubWebHookView
 
 from .views import (
     ProjectViewSet, 
@@ -38,6 +38,6 @@ urlpatterns = [
     path('', include(department_router.urls)),
     path('', include(task_router.urls)),
 
-    path('webhooks/github/', GithubWebhookView.as_view()),
+    path('webhooks/github/', GitHubWebHookView.as_view()),
 ]
 

@@ -35,7 +35,8 @@ class GitHubWebHookView(views.APIView):
 
     def _verify_signature(self, body, signature):
         secret = settings.GITHUB_WEBHOOK_SECRET.encode()
-        expected = 'sha256=' + hmac.new(secret, body, hashlib.sha256).hexdigest()
+        mac = hmac.new(secret, msg=body, digestmod=hashlib.sha256)
+        expected = 'sha256=' + mac.hexdigest()
         return hmac.compare_digest(signature, expected)
 
     def _handle_push(self, payload):
