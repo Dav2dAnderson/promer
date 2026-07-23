@@ -43,9 +43,16 @@ class Project(BaseModel):
 
 
 class Task(BaseModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('in_progress', 'In Progress'),
+        ('done', 'Done'),
+    )
+    
     title = models.CharField(max_length=150)
     slug = models.SlugField(max_length=200, null=True, blank=True, unique=True)
     description = models.TextField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     project = models.ForeignKey(
         Project, 
         on_delete=models.CASCADE, 
@@ -94,10 +101,17 @@ class TaskComment(BaseModel):
         ordering = ['created_at']
 
 class Application(BaseModel):
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('accepted', 'Accepted'),
+        ('rejected', 'Rejected'),
+    )
+    
     title = models.CharField(max_length=100)
     slug = models.SlugField(max_length=150, null=True, blank=True, unique=True)
     description = models.TextField()
-    is_accepted = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    is_accepted = models.BooleanField(default=False)  # Keep for backward compatibility
     user = models.ForeignKey(
         'accounts.CustomUser',
         on_delete=models.CASCADE,

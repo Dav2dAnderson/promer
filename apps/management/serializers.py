@@ -28,7 +28,7 @@ class ApplicationListSerializer(BaseSerializer):
     project = ProjectListSerializer(read_only=True)
     class Meta(BaseSerializer.Meta):
         model = Application
-        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'user', 'project', 'is_accepted']
+        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'user', 'project', 'is_accepted', 'status']
 
 
 class ApplicationDetailSerializer(BaseSerializer):
@@ -36,26 +36,32 @@ class ApplicationDetailSerializer(BaseSerializer):
     user = CustomUserSerializer(read_only=True)
     class Meta(BaseSerializer.Meta):
         model = Application
-        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'user', 'project', 'is_accepted']
+        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'user', 'project', 'is_accepted', 'status']
 
 
 class TaskListSerializer(BaseSerializer):
     to_user = CustomUserSerializer(read_only=True)
+    to_user_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='to_user', write_only=True
+    )
     project = ProjectListSerializer(read_only=True)
 
     class Meta(BaseSerializer.Meta):
         model = Task
-        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'to_user', 'project']
+        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'to_user', 'to_user_id', 'project', 'status']
 
 
 class TaskDetailSerializer(BaseSerializer):
     to_user = CustomUserSerializer(read_only=True)
+    to_user_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.all(), source='to_user', write_only=True
+    )
     from_user = CustomUserSerializer(read_only=True)
     project = ProjectListSerializer(read_only=True)
 
     class Meta(BaseSerializer.Meta):
         model = Task
-        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'to_user', 'from_user', 'project']
+        fields = BaseSerializer.Meta.fields + ['id', 'title', 'slug', 'description', 'to_user', 'to_user_id', 'from_user', 'project', 'status']
         read_only_fields = ['project', 'from_user', 'slug']
 
 
@@ -88,5 +94,5 @@ class DepartmentMembersDetailSerializer(BaseSerializer):
 class DepartmentSerializer(BaseSerializer):
     class Meta(BaseSerializer.Meta):
         model = Department
-        fields = BaseSerializer.Meta.fields + ['id', 'name', 'slug', 'project']
+        fields = BaseSerializer.Meta.fields + ['id', 'name', 'slug', 'project', 'description']
         read_only_fields = ['project']

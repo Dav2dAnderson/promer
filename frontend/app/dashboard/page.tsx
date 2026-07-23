@@ -26,14 +26,20 @@ export default function DashboardPage() {
         setProjects(projectsRes.data.slice(0, 5))
         
         // Fetch tasks from first project if available
+        let fetchedTasks: Task[] = []
         if (projectsRes.data.length > 0) {
-          const tasksRes = await api.get<Task[]>(`/management/projects/${projectsRes.data[0].slug}/tasks/`)
-          setTasks(tasksRes.data.slice(0, 5))
+          try {
+            const tasksRes = await api.get<Task[]>(`/management/projects/${projectsRes.data[0].slug}/tasks/`)
+            fetchedTasks = tasksRes.data.slice(0, 5)
+            setTasks(fetchedTasks)
+          } catch (error) {
+            console.error('Failed to fetch tasks:', error)
+          }
         }
         
         setStats({
           totalProjects: projectsRes.data.length,
-          activeTasks: tasks.filter(t => t.status !== 'done').length,
+          activeTasks: fetchedTasks.filter(t => t.status !== 'done').length,
           pendingApplications: 0,
         })
       } catch (error) {

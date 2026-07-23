@@ -21,12 +21,19 @@ export default function ProjectsPage() {
   useEffect(() => {
     const fetchProjects = async () => {
       try {
-        const [allRes, mineRes] = await Promise.all([
-          api.get<Project[]>('/management/projects/'),
-          api.get<Project[]>('/management/projects/?my_projects=true'),
-        ])
-        setProjects(allRes.data)
-        setMyProjects(mineRes.data)
+        try {
+          const allRes = await api.get<Project[]>('/management/projects/')
+          setProjects(allRes.data)
+        } catch (error) {
+          console.error('Failed to fetch all projects:', error)
+        }
+
+        try {
+          const mineRes = await api.get<Project[]>('/management/projects/?my_projects=true')
+          setMyProjects(mineRes.data)
+        } catch (error) {
+          console.error('Failed to fetch my projects:', error)
+        }
       } catch (error) {
         console.error('Failed to fetch projects:', error)
       } finally {

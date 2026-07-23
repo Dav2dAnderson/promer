@@ -32,12 +32,15 @@ export default function TaskDetailPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [taskRes, commentsRes] = await Promise.all([
-          api.get<Task>(`/management/projects/${pSlug}/tasks/${tSlug}/`),
-          api.get<Comment[]>(`/management/projects/${pSlug}/tasks/${tSlug}/comments/`),
-        ])
+        const taskRes = await api.get<Task>(`/management/projects/${pSlug}/tasks/${tSlug}/`)
         setTask(taskRes.data)
-        setComments(commentsRes.data)
+
+        try {
+          const commentsRes = await api.get<Comment[]>(`/management/projects/${pSlug}/tasks/${tSlug}/comments/`)
+          setComments(commentsRes.data)
+        } catch (error) {
+          console.error('Failed to fetch comments:', error)
+        }
       } catch (error) {
         console.error('Failed to fetch task data:', error)
         // Don't redirect on 401 - axios interceptor handles that

@@ -23,7 +23,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </div>
         <div className="flex items-center gap-2">
           <Calendar size={16} />
-          <span>{new Date(project.start_date).toLocaleDateString()}</span>
+          <span>{new Date(project.created_at).toLocaleDateString()}</span>
         </div>
       </div>
 

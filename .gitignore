@@ -1,11 +1,14 @@
 # Python
 myenv/
 __pycache__/
+*.py[codod]
 *.pyc
 *.pyo
 *.pyd
 .env
 *.env
+.env.local
+.env.*.local
 db.sqlite3
 
 # Django
@@ -13,12 +16,18 @@ media/
 staticfiles/
 *.log
 
-# Next.js
+# Next.js / frontend
 frontend/.next/
 frontend/node_modules/
 frontend/.env
 frontend/.env.local
 frontend/.env.production
+
+# Testing / coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
 
 # OS
 .DS_Store
@@ -30,7 +39,7 @@ Thumbs.db
 *.swp
 *.swo
 
-# pytest
-.pytest_cache/
-htmlcov/
-.coverage
+# agents
+.codex
+.devin
+.agents

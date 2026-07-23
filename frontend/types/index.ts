@@ -50,8 +50,6 @@ export type Project = {
   description: string
   owner: User
   contributors: User[]
-  start_date: string
-  end_date?: string
   is_public: boolean
   created_at: string
   updated_at: string
@@ -62,12 +60,12 @@ export type TaskStatus = 'pending' | 'in_progress' | 'in-progress' | 'done'
 export type CreateProjectRequest = {
   name: string
   description: string
-  start_date: string
-  end_date?: string
   is_public?: boolean
 }
 
 export type UpdateProjectRequest = Partial<CreateProjectRequest>
+
+export type ProjectFormData = CreateProjectRequest
 
 export type Task = {
   slug: string
@@ -85,7 +83,7 @@ export type Task = {
 export type CreateTaskRequest = {
   title: string
   description: string
-  to_user: number
+  to_user_id: number
   due_date?: string
 }
 
@@ -109,17 +107,18 @@ export type CreateCommentRequest = {
 
 export type Application = {
   slug: string
-  project: string
-  applicant: User
+  project: string | Project
+  user: User
   title: string
-  content: string
+  description: string
   status: 'pending' | 'accepted' | 'rejected'
+  is_accepted: boolean
   created_at: string
 }
 
 export type CreateApplicationRequest = {
   title: string
-  content: string
+  description: string
 }
 
 export type Department = {
@@ -134,6 +133,8 @@ export type CreateDepartmentRequest = {
   name: string
   description: string
 }
+
+export type UpdateDepartmentRequest = Partial<CreateDepartmentRequest>
 
 export type DepartmentMember = {
   id: number
