@@ -9,12 +9,20 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0a',
-        surface: '#111111',
-        border: '#1e1e1e',
+        background: '#0A0D14',
+        surface: '#131823',
+        nav: '#0F131C',
+        border: 'rgba(255, 255, 255, 0.08)',
+        ink: '#F9FAFB',
+        secondary: '#9CA3AF',
+        muted: '#6B7280',
+        cyan: '#00D2FE',
+        emerald: '#00E599',
+        warning: '#F59E0B',
+        danger: '#EF4444',
         accent: {
-          DEFAULT: '#6366f1',
-          hover: '#4f46e5',
+          DEFAULT: '#6E56CF',
+          hover: '#7C3AED',
         },
       },
       fontFamily: {

@@ -6,7 +6,7 @@ import { ProjectCard } from '@/components/ui/ProjectCard'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Plus, Folder } from 'lucide-react'
+import { Plus, Folder, Search, SlidersHorizontal } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
 import type { Project } from '@/types'
@@ -58,26 +58,27 @@ export default function ProjectsPage() {
 
   return (
     <MainLayout breadcrumb={['Projects']}>
-      <div className="space-y-6">
+      <div className="mx-auto max-w-7xl space-y-7">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold">Projects</h1>
+          <div><p className="eyebrow mb-2">Workspace / Registry</p><h1 className="text-3xl font-semibold tracking-tight">Projects</h1><p className="mt-2 text-zinc-400">Track initiatives, teams, and delivery in one place.</p></div>
           {user?.is_manager && (
             <Button href="/projects/new" className="gap-2">
-              <Plus size={18} />
+              <Plus size={16} />
               New Project
             </Button>
           )}
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 border-b border-border">
+        <div className="flex flex-col gap-4 border-b border-white/[0.08] pb-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="flex gap-5">
           <button
             onClick={() => setActiveTab('all')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'all'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-cyan border-b-2 border-cyan'
+                : 'text-zinc-500 hover:text-white'
             }`}
           >
             All Projects
@@ -86,12 +87,13 @@ export default function ProjectsPage() {
             onClick={() => setActiveTab('mine')}
             className={`px-4 py-2 font-medium transition-colors ${
               activeTab === 'mine'
-                ? 'text-accent border-b-2 border-accent'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-cyan border-b-2 border-cyan'
+                : 'text-zinc-500 hover:text-white'
             }`}
           >
             My Projects
-          </button>
+          </button></div>
+          <div className="flex items-center gap-3"><div className="flex items-center gap-2 rounded-md border border-white/10 bg-zinc-950/50 px-3 py-2 text-xs text-zinc-500"><Search size={14} /> Search projects</div><button className="rounded-md border border-white/10 p-2 text-zinc-500 hover:text-white" title="Filter projects"><SlidersHorizontal size={15} /></button></div>
         </div>
 
         {/* Projects Grid */}

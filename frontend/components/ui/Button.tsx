@@ -21,9 +21,9 @@ export function Button({
   ...props
 }: ButtonProps) {
   const variants = {
-    primary: 'bg-accent hover:bg-accent-hover text-white',
-    secondary: 'bg-surface border border-border hover:border-accent text-white',
-    danger: 'bg-red-500 hover:bg-red-600 text-white',
+    primary: 'bg-accent hover:bg-accent-hover text-white shadow-lg shadow-accent/15',
+    secondary: 'bg-surface border border-border hover:border-white/20 text-ink',
+    danger: 'bg-danger hover:bg-red-500 text-white',
   }
 
   const sizes = {
@@ -32,7 +32,7 @@ export function Button({
     lg: 'px-6 py-3 text-lg',
   }
 
-  const buttonClasses = `${sizes[size]} rounded-md font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${variants[variant]} ${className}`
+  const buttonClasses = `${sizes[size]} rounded-md font-medium transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 ${variants[variant]} ${className}`
 
   if (href && !isLoading) {
     return (

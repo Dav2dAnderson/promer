@@ -39,7 +39,7 @@ export function MainLayout({ children, breadcrumb = [] }: MainLayoutProps) {
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
         <TopBar breadcrumb={breadcrumb} />
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 overflow-auto">
           {children}
         </main>
       </div>

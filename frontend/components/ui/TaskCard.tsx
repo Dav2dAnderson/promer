@@ -15,16 +15,16 @@ export function TaskCard({ task }: TaskCardProps) {
   return (
     <Link
       href={`/projects/${slug}/tasks/${task.slug}`}
-      className="block bg-surface border border-border rounded-lg p-4 hover:border-accent transition-colors"
+      className="group block surface-panel p-5 hover:-translate-y-0.5 transition-all duration-200"
     >
       <div className="flex items-start justify-between mb-2">
-        <h3 className="font-semibold">{task.title}</h3>
+        <h3 className="font-semibold group-hover:text-cyan transition-colors">{task.title}</h3>
         <StatusBadge variant={task.status}>{task.status}</StatusBadge>
       </div>
       
-      <p className="text-gray-400 text-sm mb-4 line-clamp-2">{task.description}</p>
+      <p className="text-zinc-400 text-sm mb-5 line-clamp-2 leading-6">{task.description}</p>
       
-      <div className="flex items-center justify-between text-sm text-gray-400">
+      <div className="flex items-center justify-between text-xs text-zinc-500">
         <div className="flex items-center gap-2">
           <User size={16} />
           <span>{task.to_user.username}</span>

@@ -110,11 +110,9 @@ REST_AUTH = {
 # JWT_AUTH_COOKIE = 'my-app-auth',
 # JWT_AUTH_REFRESH_COOKIE = 'my-app-refresh-token'
 
-# ACCOUNT_AUTHENTICATION_METHOD = 'email' # Using email for login
-ACCOUNT_EMAIL_REQUIRED = False
-ACCOUNT_USERNAME_REQUIRED = True # username is not required
 ACCOUNT_EMAIL_VERIFICATION = 'none' # email verification is optional. (if verification requiered -> mandatory)
 ACCOUNT_LOGIN_METHODS = {'username'}
+ACCOUNT_SIGNUP_FIELDS = ['email', 'username*', 'password1*', 'password2*']
 
 from datetime import timedelta
 
@@ -226,4 +224,3 @@ SPECTACULAR_SETTINGS = {
 
 
 GITHUB_WEBHOOK_SECRET = config('GITHUB_WEBHOOK_SECRET') # You can generate a secure secret key for this
-

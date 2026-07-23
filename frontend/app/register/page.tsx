@@ -50,8 +50,8 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
-        <div className="bg-surface border border-border rounded-lg p-8">
-          <h1 className="text-2xl font-bold mb-6 text-center">Create Account</h1>
+        <div className="mb-8 text-center"><div className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-md bg-accent text-white">✦</div><p className="eyebrow mb-3">Promer / Workspace</p><h1 className="text-2xl font-semibold tracking-tight">Create your account</h1><p className="mt-2 text-sm text-zinc-400">Join your team and start shipping.</p></div>
+        <div className="surface-panel p-7">
           
           {error && <ErrorMessage error={error} />}
           
@@ -126,7 +126,7 @@ export default function RegisterPage() {
             </Button>
           </form>
           
-          <p className="mt-6 text-center text-sm text-gray-400">
+          <p className="mt-6 text-center text-sm text-zinc-500">
             Already have an account?{' '}
             <a href="/login" className="text-accent hover:underline">
               Sign in

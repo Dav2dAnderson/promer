@@ -7,7 +7,7 @@ import { TaskCard } from '@/components/ui/TaskCard'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Folder, CheckSquare, Send, Plus } from 'lucide-react'
+import { Folder, CheckSquare, Send, Plus, ArrowUpRight, Activity } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
 import type { Project, Task } from '@/types'
@@ -54,13 +54,13 @@ export default function DashboardPage() {
   }, [])
 
   const StatCard = ({ title, value, icon: Icon }: { title: string; value: number; icon: any }) => (
-    <div className="bg-surface border border-border rounded-lg p-6">
+    <div className="surface-panel p-5">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-gray-400 text-sm">{title}</p>
-          <p className="text-3xl font-bold mt-2">{value}</p>
+          <p className="eyebrow">{title}</p>
+          <p className="text-3xl font-semibold mt-3 tracking-tight">{value}</p>
         </div>
-        <Icon className="text-accent" size={24} />
+        <Icon className="text-cyan" size={20} />
       </div>
     </div>
   )
@@ -77,7 +77,11 @@ export default function DashboardPage() {
 
   return (
     <MainLayout breadcrumb={['Dashboard']}>
-      <div className="space-y-8">
+      <div className="mx-auto max-w-7xl space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div><p className="eyebrow mb-3">Overview / {new Date().toISOString().slice(0, 10)}</p><h1 className="text-3xl font-semibold tracking-tight">Good morning, {user?.first_name || user?.username}.</h1><p className="mt-2 text-zinc-400">Here’s what needs your attention across the workspace.</p></div>
+          <div className="flex items-center gap-2 text-xs font-mono text-emerald"><span className="h-2 w-2 rounded-full bg-emerald shadow-[0_0_10px_rgba(0,229,153,0.8)]" />SYSTEMS OPERATIONAL</div>
+        </div>
         {/* Stats */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <StatCard title="Total Projects" value={stats.totalProjects} icon={Folder} />
@@ -86,21 +90,21 @@ export default function DashboardPage() {
         </div>
 
         {/* Quick Actions */}
-        <div className="flex gap-4">
+        <div className="flex flex-wrap gap-3">
           {user?.is_manager && (
             <Button href="/projects/new" className="gap-2">
-              <Plus size={18} />
+              <Plus size={16} />
               New Project
             </Button>
           )}
           <Button variant="secondary" href="/projects">
-            Browse Projects
+            Browse Projects <ArrowUpRight size={16} />
           </Button>
         </div>
 
         {/* Recent Projects */}
         <div>
-          <h2 className="text-xl font-semibold mb-4">Recent Projects</h2>
+          <div className="mb-4 flex items-center justify-between"><div><p className="eyebrow mb-1">Workspace activity</p><h2 className="text-xl font-semibold">Recent Projects</h2></div><Activity size={18} className="text-zinc-600" /></div>
           {projects.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {projects.map((project) => (
