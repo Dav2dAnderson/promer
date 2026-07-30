@@ -24,6 +24,7 @@ export default function TaskDetailPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCompleting, setIsCompleting] = useState(false)
+  const [isApproving, setIsApproving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const pSlug = params.pSlug as string
@@ -91,7 +92,7 @@ export default function TaskDetailPage() {
   }
 
   const handleMarkComplete = async () => {
-    if (!confirm('Mark this task as done?')) return
+    if (!confirm('Submit this task for manager approval?')) return
 
     setIsCompleting(true)
     try {
@@ -106,7 +107,25 @@ export default function TaskDetailPage() {
     }
   }
 
+  const handleApproveTask = async () => {
+    if (!confirm('Approve this task and mark it as done?')) return
+
+    setIsApproving(true)
+    try {
+      await api.patch(`/management/projects/${pSlug}/tasks/${tSlug}/approve/`)
+      const res = await api.get<Task>(`/management/projects/${pSlug}/tasks/${tSlug}/`)
+      setTask(res.data)
+    } catch (error) {
+      console.error('Failed to approve task:', error)
+    } finally {
+      setIsApproving(false)
+    }
+  }
+
   const isAssignee = user?.id === task?.to_user.id
+  const projectOwnerId = task && typeof task.project !== 'string' ? task.project.owner.id : undefined
+  const isProjectManager = user?.id === projectOwnerId
+  const statusLabel = task?.status.replace(/_/g, ' ')
 
   if (isLoading) {
     return (
@@ -161,18 +180,28 @@ export default function TaskDetailPage() {
             <div className="flex-1">
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="text-2xl font-bold">{task.title}</h1>
-                <StatusBadge variant={task.status}>{task.status}</StatusBadge>
+                <StatusBadge variant={task.status}>{statusLabel}</StatusBadge>
               </div>
               <p className="text-gray-400">{task.description}</p>
             </div>
-            {isAssignee && task.status !== 'done' && (
+            {isAssignee && task.status !== 'pending_approval' && task.status !== 'done' && (
               <Button
                 onClick={handleMarkComplete}
                 isLoading={isCompleting}
                 className="gap-2"
               >
                 <Check size={18} />
-                Mark as Done
+                Submit for Approval
+              </Button>
+            )}
+            {isProjectManager && task.status === 'pending_approval' && (
+              <Button
+                onClick={handleApproveTask}
+                isLoading={isApproving}
+                className="gap-2"
+              >
+                <Check size={18} />
+                Approve Task
               </Button>
             )}
           </div>

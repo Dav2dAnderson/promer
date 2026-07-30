@@ -5,7 +5,7 @@ from base.serializers import BaseSerializer
 from apps.accounts.serializers import CustomUserSerializer
 from apps.accounts.models import CustomUser
 
-from .models import Project, Task, Application, Department, DepartmentMember, TaskComment
+from .models import Project, Task, Application, TaskComment
 
 
 class ProjectListSerializer(BaseSerializer):
@@ -70,29 +70,6 @@ class TaskCommentSerializer(BaseSerializer):
     task = TaskListSerializer(read_only=True)
     class Meta(BaseSerializer.Meta):
         model = TaskComment
-        fields = BaseSerializer.Meta.fields + ['id', 'content', 'file', 'task', 'user']
+        fields = BaseSerializer.Meta.fields + ['id', 'content', 'file', 'github_url', 'task', 'user']
         read_only_fields = ['task', 'user']
 
-
-class DepartmentMemberSerializer(BaseSerializer):
-    user = CustomUserSerializer(read_only=True)
-    user_id = serializers.PrimaryKeyRelatedField(
-        queryset=CustomUser.objects.all(), source='user', write_only=True
-    )
-    class Meta(BaseSerializer.Meta):
-        model = DepartmentMember
-        fields = BaseSerializer.Meta.fields + ['id', 'user', 'user_id', 'role']
-
-
-class DepartmentMembersDetailSerializer(BaseSerializer):
-    user = CustomUserSerializer(read_only=True)
-    class Meta(BaseSerializer.Meta):
-        model = DepartmentMember
-        fields = BaseSerializer.Meta.fields + ['id', 'user', 'role', 'department']
-    
-
-class DepartmentSerializer(BaseSerializer):
-    class Meta(BaseSerializer.Meta):
-        model = Department
-        fields = BaseSerializer.Meta.fields + ['id', 'name', 'slug', 'project', 'description']
-        read_only_fields = ['project']

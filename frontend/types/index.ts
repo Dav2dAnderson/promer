@@ -55,7 +55,7 @@ export type Project = {
   updated_at: string
 }
 
-export type TaskStatus = 'pending' | 'in_progress' | 'in-progress' | 'done'
+export type TaskStatus = 'pending' | 'in_progress' | 'in-progress' | 'pending_approval' | 'done'
 
 export type CreateProjectRequest = {
   name: string
@@ -69,7 +69,7 @@ export type ProjectFormData = CreateProjectRequest
 
 export type Task = {
   slug: string
-  project: string | { slug: string }
+  project: string | Project
   title: string
   description: string
   from_user: User
@@ -121,33 +121,6 @@ export type CreateApplicationRequest = {
   description: string
 }
 
-export type Department = {
-  slug: string
-  project: string
-  name: string
-  description: string
-  created_at: string
-}
-
-export type CreateDepartmentRequest = {
-  name: string
-  description: string
-}
-
-export type UpdateDepartmentRequest = Partial<CreateDepartmentRequest>
-
-export type DepartmentMember = {
-  id: number
-  department: number
-  user: User
-  role: string
-  joined_at: string
-}
-
-export type AddDepartmentMemberRequest = {
-  user: number
-  role: string
-}
 
 export type ApiResponse<T> = {
   data: T

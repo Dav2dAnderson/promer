@@ -15,12 +15,9 @@ from .serializers import (
     ApplicationDetailSerializer, 
     TaskListSerializer,
     TaskDetailSerializer,
-    DepartmentSerializer,
-    DepartmentMemberSerializer,
-    DepartmentMembersDetailSerializer,
     TaskCommentSerializer
     )
-from .models import Project, Application, Task, Department, DepartmentMember, TaskComment
+from .models import Project, Application, Task, TaskComment
 from .permissions import IsNotProjectOwner, IsManager, IsProjectOwner, IsAdminOrApplicationOwner, IsAdminOrOwner
 from .filters import ProjectFilter
 # Create your views here.
@@ -327,36 +324,58 @@ class TasksViewSet(viewsets.ModelViewSet):
         return TaskListSerializer
     
     def get_permissions(self):
-        if self.action == 'complete':
+        if self.action in ['complete', 'approve']:
             return [IsAuthenticated()]
         return super().get_permissions()
     
     @extend_schema(
-        summary="Complete a task",
+        summary="Submit a task for approval",
         description=(
-            "Marks the task as completed by setting status to 'done'."
+            "Marks the task as completed by the assignee and waits for project manager approval."
         ),
         tags=["Tasks"],
         request=None,
         responses={200: None},
     )
     @action(detail=True, methods=['patch'], url_path='complete')
-    def complete(self, request, slug=None):
+    def complete(self, request, slug=None, project_slug=None):
         task = self.get_object()
         user = request.user
         
-        # Check if user has permission to complete the task
-        is_owner = task.project.owner == user
         is_assigned = task.to_user == user
-        is_staff = user.is_staff or user.is_superuser
         
-        if not (is_owner or is_assigned or is_staff):
+        if not is_assigned:
             from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You do not have permission to complete this task.")
+            raise PermissionDenied("Only the assigned contributor can submit this task for approval.")
         
+        task.status = 'pending_approval'
+        task.save(update_fields=['status'])
+        return Response({'message': 'Task submitted for manager approval.'}, status=status.HTTP_200_OK)
+
+    @extend_schema(
+        summary="Approve a completed task",
+        description=(
+            "Allows the project manager to approve a submitted task and mark it as done."
+        ),
+        tags=["Tasks"],
+        request=None,
+        responses={200: None},
+    )
+    @action(detail=True, methods=['patch'], url_path='approve')
+    def approve(self, request, slug=None, project_slug=None):
+        task = self.get_object()
+        user = request.user
+
+        is_owner = task.project.owner == user
+        is_staff = user.is_staff or user.is_superuser
+
+        if not (is_owner or is_staff):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only the project manager can approve this task.")
+
         task.status = 'done'
         task.save(update_fields=['status'])
-        return Response({'message': 'Task marked as completed.'}, status=status.HTTP_200_OK)
+        return Response({'message': 'Task approved and marked as done.'}, status=status.HTTP_200_OK)
 
 
 class TaskCommentViewSet(viewsets.ModelViewSet):
@@ -381,110 +400,3 @@ class TaskCommentViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("You do not have permission to create a comment on this task.")
         serializer.save(user=user, task=task)
 
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List departments",
-        description="Returns all departments belonging to projects owned by the authenticated manager.",
-        tags=["Departments"],
-    ),
-    create=extend_schema(
-        summary="Create a department",
-        description="Creates a department within the specified project. Requires Manager role and project ownership.",
-        tags=["Departments"],
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve a department",
-        description="Retrieves details of a single department by its slug.",
-        tags=["Departments"],
-    ),
-    update=extend_schema(
-        summary="Update a department (full)",
-        tags=["Departments"],
-    ),
-    partial_update=extend_schema(
-        summary="Partially update a department",
-        tags=["Departments"],
-    ),
-    destroy=extend_schema(
-        summary="Delete a department",
-        tags=["Departments"],
-    ),
-)
-class DeparmentViewSet(viewsets.ModelViewSet):
-    serializer_class = DepartmentSerializer
-    permission_classes = [IsProjectOwner, IsManager]
-    lookup_field = 'slug'
-
-    def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return Department.objects.none()
-        project_slug = self.kwargs.get('project_slug')
-        project = get_object_or_404(Project, slug=project_slug)
-        return Department.objects.select_related('project').prefetch_related('user').filter(project__owner=user, project=project)
-    
-    def perform_create(self, serializer):
-        project_slug = self.kwargs.get('project_slug')
-        project = get_object_or_404(Project, slug=project_slug)
-        if project.owner != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You must be the project owner to create a department")
-        serializer.save(project=project)
-
-@extend_schema_view(
-    list=extend_schema(
-        summary="List department members",
-        description="Returns all members of the specified department.",
-        tags=["Department Members"],
-    ),
-    create=extend_schema(
-        summary="Add a department member",
-        description="Adds a user to a department with a specified role.",
-        tags=["Department Members"],
-    ),
-    retrieve=extend_schema(
-        summary="Retrieve a department member",
-        description="Retrieves details of a specific department membership.",
-        tags=["Department Members"],
-    ),
-    update=extend_schema(
-        summary="Update a department member (full)",
-        tags=["Department Members"],
-    ),
-    partial_update=extend_schema(
-        summary="Partially update a department member",
-        tags=["Department Members"],
-    ),
-    destroy=extend_schema(
-        summary="Remove a department member",
-        description="Removes a user from the department.",
-        tags=["Department Members"],
-    ),
-)
-class DepartmentMemberViewSet(viewsets.ModelViewSet):
-    serializer_class = DepartmentMemberSerializer
-    permission_classes = [IsAuthenticated, IsProjectOwner, IsManager]
-    lookup_field = 'id'
-
-    def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return DepartmentMember.objects.none()
-        
-        department_slug = self.kwargs.get('department_slug')
-        # Only show members of departments owned by the authenticated user
-        return DepartmentMember.objects.select_related(
-            'user', 'department'
-        ).filter(department__slug=department_slug, department__project__owner=user)
-
-    def perform_create(self, serializer):
-        department_slug = self.kwargs.get('department_slug')
-        department = get_object_or_404(Department, slug=department_slug)
-        
-        # Only allow adding members to departments owned by the user
-        if department.project.owner != self.request.user:
-            from rest_framework.exceptions import PermissionDenied
-            raise PermissionDenied("You must be the project owner to add department members.")
-        
-        serializer.save(department=department)

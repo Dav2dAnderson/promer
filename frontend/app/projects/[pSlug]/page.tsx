@@ -9,12 +9,12 @@ import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { Modal } from '@/components/ui/Modal'
-import { CheckSquare, Users, Send, Settings, Plus, Trash2, Calendar, Building2, Edit2, MoreVertical, User } from 'lucide-react'
+import { CheckSquare, Users, Send, Settings, Plus, Trash2, Calendar, Edit2, MoreVertical, User } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
-import type { Project, Task, Application, Department, CreateTaskRequest, UpdateTaskRequest, ProjectFormData, CreateDepartmentRequest, UpdateDepartmentRequest } from '@/types'
+import type { Project, Task, Application, CreateTaskRequest, UpdateTaskRequest, ProjectFormData } from '@/types'
 
-type Tab = 'tasks' | 'departments' | 'applications' | 'settings'
+type Tab = 'tasks' | 'applications' | 'settings'
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -24,7 +24,6 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null)
   const [tasks, setTasks] = useState<Task[]>([])
   const [applications, setApplications] = useState<Application[]>([])
-  const [departments, setDepartments] = useState<Department[]>([])
   const [availableUsers, setAvailableUsers] = useState<Array<{ id: number; username: string }>>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
@@ -68,21 +67,6 @@ export default function ProjectDetailPage() {
     is_public: false,
   })
   
-  // Department CRUD state
-  const [isCreateDeptModalOpen, setIsCreateDeptModalOpen] = useState(false)
-  const [isCreatingDept, setIsCreatingDept] = useState(false)
-  const [newDeptName, setNewDeptName] = useState('')
-  const [newDeptDescription, setNewDeptDescription] = useState('')
-  
-  const [isEditDeptModalOpen, setIsEditDeptModalOpen] = useState(false)
-  const [isEditingDept, setIsEditingDept] = useState(false)
-  const [editingDept, setEditingDept] = useState<Department | null>(null)
-  const [editDeptName, setEditDeptName] = useState('')
-  const [editDeptDescription, setEditDeptDescription] = useState('')
-  
-  const [isDeletingDept, setIsDeletingDept] = useState(false)
-  const [activeDeptMenu, setActiveDeptMenu] = useState<string | null>(null)
-
   const pSlug = params.pSlug as string
 
   useEffect(() => {
@@ -99,10 +83,6 @@ export default function ProjectDetailPage() {
         api.get<Application[]>(`/management/projects/${pSlug}/applications/`)
           .then(res => setApplications(res.data))
           .catch(err => console.error('Failed to fetch applications:', err))
-
-        api.get<Department[]>(`/management/projects/${pSlug}/departments/`)
-          .then(res => setDepartments(res.data))
-          .catch(err => console.error('Failed to fetch departments:', err))
 
         // Set available users (owner + contributors)
         if (projectRes.data) {
@@ -142,11 +122,11 @@ export default function ProjectDetailPage() {
   }, [])
 
   useEffect(() => {
-    if (activeTaskMenu || activeDeptMenu) {
+    if (activeTaskMenu) {
       document.addEventListener('click', handleOutsideClick)
       return () => document.removeEventListener('click', handleOutsideClick)
     }
-  }, [activeTaskMenu, activeDeptMenu, handleOutsideClick])
+  }, [activeTaskMenu, handleOutsideClick])
 
   const handleDeleteProject = async () => {
     if (!confirm('Are you sure you want to delete this project?')) return
@@ -311,80 +291,6 @@ export default function ProjectDetailPage() {
     }
   }
 
-  const handleCreateDepartment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!newDeptName.trim()) return
-
-    setIsCreatingDept(true)
-    try {
-      const createData: CreateDepartmentRequest = {
-        name: newDeptName,
-        description: newDeptDescription,
-      }
-      await api.post(`/management/projects/${pSlug}/departments/`, createData)
-      // Refresh departments
-      const res = await api.get<Department[]>(`/management/projects/${pSlug}/departments/`)
-      setDepartments(res.data)
-      // Reset form and close modal
-      setNewDeptName('')
-      setNewDeptDescription('')
-      setIsCreateDeptModalOpen(false)
-    } catch (error) {
-      console.error('Failed to create department:', error)
-    } finally {
-      setIsCreatingDept(false)
-    }
-  }
-
-  const handleEditDepartment = (dept: Department) => {
-    setEditingDept(dept)
-    setEditDeptName(dept.name)
-    setEditDeptDescription(dept.description)
-    setIsEditDeptModalOpen(true)
-  }
-
-  const handleUpdateDepartment = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!editingDept || !editDeptName.trim()) return
-
-    setIsEditingDept(true)
-    try {
-      const updateData: UpdateDepartmentRequest = {
-        name: editDeptName,
-        description: editDeptDescription,
-      }
-      await api.patch(`/management/projects/${pSlug}/departments/${editingDept.slug}/`, updateData)
-      // Refresh departments
-      const res = await api.get<Department[]>(`/management/projects/${pSlug}/departments/`)
-      setDepartments(res.data)
-      // Reset form and close modal
-      setEditingDept(null)
-      setEditDeptName('')
-      setEditDeptDescription('')
-      setIsEditDeptModalOpen(false)
-    } catch (error) {
-      console.error('Failed to update department:', error)
-    } finally {
-      setIsEditingDept(false)
-    }
-  }
-
-  const handleDeleteDepartment = async (deptSlug: string) => {
-    if (!confirm('Are you sure you want to delete this department?')) return
-
-    setIsDeletingDept(true)
-    try {
-      await api.delete(`/management/projects/${pSlug}/departments/${deptSlug}/`)
-      // Refresh departments
-      const res = await api.get<Department[]>(`/management/projects/${pSlug}/departments/`)
-      setDepartments(res.data)
-    } catch (error) {
-      console.error('Failed to delete department:', error)
-    } finally {
-      setIsDeletingDept(false)
-    }
-  }
-
   const isOwner = user?.id === project?.owner.id
 
   if (isLoading) {
@@ -407,7 +313,6 @@ export default function ProjectDetailPage() {
 
   const tabs = [
     { id: 'tasks' as Tab, label: 'Tasks', icon: CheckSquare },
-    { id: 'departments' as Tab, label: 'Departments', icon: Building2 },
     { id: 'applications' as Tab, label: 'Applications', icon: Send },
     ...(isOwner ? [{ id: 'settings' as Tab, label: 'Settings', icon: Settings }] : []),
   ]
@@ -564,76 +469,6 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
-          {activeTab === 'departments' && (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">Departments</h2>
-                {isOwner && (
-                  <Button onClick={() => setIsCreateDeptModalOpen(true)} className="gap-2">
-                    <Plus size={18} />
-                    New Department
-                  </Button>
-                )}
-              </div>
-              {departments.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {departments.map((dept) => (
-                    <div key={dept.slug} className="relative group">
-                      <div className="bg-surface border border-border rounded-lg p-5 hover:border-accent hover:shadow-lg transition-all duration-200">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-base">{dept.name}</h3>
-                          </div>
-                          {isOwner && (
-                            <div className="relative">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setActiveDeptMenu(activeDeptMenu === dept.slug ? null : dept.slug)
-                                }}
-                                className="p-1.5 hover:bg-background rounded-lg transition-colors"
-                              >
-                                <MoreVertical size={16} className="text-gray-400" />
-                              </button>
-                              {activeDeptMenu === dept.slug && (
-                                <div className="absolute right-0 top-8 bg-surface border border-border rounded-lg shadow-xl z-10 min-w-[120px] overflow-hidden">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleEditDepartment(dept)
-                                      setActiveDeptMenu(null)
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-background flex items-center gap-2 transition-colors"
-                                  >
-                                    <Edit2 size={14} />
-                                    Edit
-                                  </button>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation()
-                                      handleDeleteDepartment(dept.slug)
-                                      setActiveDeptMenu(null)
-                                    }}
-                                    className="w-full px-3 py-2 text-left text-sm hover:bg-background text-red-400 flex items-center gap-2 transition-colors"
-                                  >
-                                    <Trash2 size={14} />
-                                    Delete
-                                  </button>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        <p className="text-gray-400 text-sm line-clamp-2 min-h-[2.5rem]">{dept.description}</p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <EmptyState message="No departments yet" icon={<Building2 size={48} />} />
-              )}
-            </div>
-          )}
 
           {activeTab === 'applications' && (
             <div className="space-y-4">
@@ -972,6 +807,7 @@ export default function ProjectDetailPage() {
               >
                 <option value="pending">Pending</option>
                 <option value="in_progress">In Progress</option>
+                <option value="pending_approval">Pending Approval</option>
                 <option value="done">Done</option>
               </select>
             </div>
@@ -992,105 +828,6 @@ export default function ProjectDetailPage() {
         </form>
       </Modal>
 
-      {/* Create Department Modal */}
-      <Modal
-        isOpen={isCreateDeptModalOpen}
-        onClose={() => setIsCreateDeptModalOpen(false)}
-        title="Create New Department"
-      >
-        <form onSubmit={handleCreateDepartment} className="space-y-5">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Department Name *
-              </label>
-              <input
-                type="text"
-                value={newDeptName}
-                onChange={(e) => setNewDeptName(e.target.value)}
-                placeholder="Enter department name..."
-                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={newDeptDescription}
-                onChange={(e) => setNewDeptDescription(e.target.value)}
-                rows={4}
-                placeholder="Describe the department..."
-                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none transition-all"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3 justify-end pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsCreateDeptModalOpen(false)}
-              className="px-5"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={isCreatingDept} className="px-5">
-              Create Department
-            </Button>
-          </div>
-        </form>
-      </Modal>
-
-      {/* Edit Department Modal */}
-      <Modal
-        isOpen={isEditDeptModalOpen}
-        onClose={() => setIsEditDeptModalOpen(false)}
-        title="Edit Department"
-      >
-        <form onSubmit={handleUpdateDepartment} className="space-y-5">
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Department Name *
-              </label>
-              <input
-                type="text"
-                value={editDeptName}
-                onChange={(e) => setEditDeptName(e.target.value)}
-                placeholder="Enter department name..."
-                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={editDeptDescription}
-                onChange={(e) => setEditDeptDescription(e.target.value)}
-                rows={4}
-                placeholder="Describe the department..."
-                className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent resize-none transition-all"
-              />
-            </div>
-          </div>
-          <div className="flex gap-3 justify-end pt-4 border-t border-border">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => setIsEditDeptModalOpen(false)}
-              className="px-5"
-            >
-              Cancel
-            </Button>
-            <Button type="submit" isLoading={isEditingDept} className="px-5">
-              Update Department
-            </Button>
-          </div>
-        </form>
-      </Modal>
     </MainLayout>
   )
 }

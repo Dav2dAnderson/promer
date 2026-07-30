@@ -12,6 +12,7 @@ export function StatusBadge({ variant, children }: StatusBadgeProps) {
     pending: 'bg-warning/10 text-warning border-warning/20',
     'in-progress': 'bg-warning/10 text-warning border-warning/20',
     in_progress: 'bg-warning/10 text-warning border-warning/20',
+    pending_approval: 'bg-accent/10 text-accent border-accent/20',
     accepted: 'bg-emerald/10 text-emerald border-emerald/20',
     approved: 'bg-emerald/10 text-emerald border-emerald/20',
     rejected: 'bg-danger/10 text-danger border-danger/20',
