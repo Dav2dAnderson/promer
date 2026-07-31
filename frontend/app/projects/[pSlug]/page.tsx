@@ -118,7 +118,6 @@ export default function ProjectDetailPage() {
   // Close dropdown when clicking outside
   const handleOutsideClick = useCallback(() => {
     setActiveTaskMenu(null)
-    setActiveDeptMenu(null)
   }, [])
 
   useEffect(() => {

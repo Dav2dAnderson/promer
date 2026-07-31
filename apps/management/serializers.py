@@ -20,7 +20,7 @@ class ProjectDetailSerializer(BaseSerializer):
     contributors = CustomUserSerializer(read_only=True, many=True)
     class Meta(BaseSerializer.Meta):
         model = Project
-        fields = BaseSerializer.Meta.fields + ['id', 'name', 'slug', 'owner', 'description', 'is_public', 'contributors']
+        fields = BaseSerializer.Meta.fields + ['id', 'name', 'slug', 'owner', 'description', 'github_url', 'is_public', 'contributors']
 
 
 class ApplicationListSerializer(BaseSerializer):

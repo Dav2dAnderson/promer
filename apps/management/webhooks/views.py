@@ -1,6 +1,7 @@
 import hmac
 import hashlib
 import logging
+import json
 
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
@@ -36,13 +37,20 @@ class GitHubWebHookView(views.APIView):
     def post(self, request):
         # GitHub yuborgan HMAC-SHA256 imzosini tekshirish
         # Agar imzo noto'g'ri bo'lsa — so'rov soxta, 403 qaytaramiz
+
+        raw_body = request.body
+
         signature = request.headers.get('X-Hub-Signature-256', '')
-        if not self._verify_signature(request.body, signature):
+        if not self._verify_signature(raw_body, signature):
             return Response({'error': 'Invalid signature'}, status=status.HTTP_403_FORBIDDEN)
+
+        try:
+            payload = json.loads(raw_body.decode('utf-8'))
+        except json.JSONDecodeError:
+            return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
 
         # GitHub event turini aniqlaymiz: 'push', 'pull_request', va h.k.
         event = request.headers.get('X-GitHub-Event', '')
-        payload = request.data
 
         if event == 'push':
             self._handle_push(payload)
@@ -97,7 +105,7 @@ class GitHubWebHookView(views.APIView):
         branch = payload.get('ref', '').replace('refs/heads/', '')
         pusher = payload.get('pusher', {}).get('name')
         commits = payload.get('commits', [])
-        repo = payload.get('repository', {}).get('full_name')
+        repo_full_name = payload.get('repository', {}).get('full_name')
 
         # Faqat task/ branch larini kuzatamiz
         if not branch.startswith('task/'):
@@ -113,11 +121,21 @@ class GitHubWebHookView(views.APIView):
             logger.warning(f"User topilmadi — github_username: {pusher}")
             return
 
+        try:
+            from apps.management.models import Project
+            project = Project.objects.get(github_url__icontains=repo_full_name)
+        except Project.DoesNotExist:
+            logger.warning(f"Loyiha topilmadi - github_repo: {repo_full_name}")
+            return
+        except Project.MultipleObjectsReturned:
+            project = Project.objects.filter(github_url__icontains=repo_full_name).first()
+
+
         # Task slug orqali Task ni topamiz
         try:
-            task = Task.objects.get(slug=task_slug)
+            task = Task.objects.get(slug=task_slug, project=project)
         except Task.DoesNotExist:
-            logger.warning(f"Task topilmadi — slug: {task_slug}")
+            logger.warning(f"Task topilmadi — slug: {task_slug}, repo: {project}")
             return
 
         # Barcha commit xabarlarini markdown formatida birlashtirамиз
@@ -129,7 +147,7 @@ class GitHubWebHookView(views.APIView):
             TaskComment.objects.create(
                 task=task,
                 user=user,
-                content=f"**Push qilindi** - `{branch}` (`{repo}`)\n\n{commit_messages}",
+                content=f"**Push qilindi** - `{branch}` (`{repo_full_name}`)\n\n{commit_messages}",
                 github_url=payload.get('compare')  # push dagi barcha commitlar linki
             )
         except Exception as e:
@@ -151,6 +169,13 @@ class GitHubWebHookView(views.APIView):
         pr = payload.get('pull_request', {})
         branch = pr.get('head', {}).get('ref', '')
         sender = payload.get('sender', {}).get('login')
+        repo_full_name = payload.get('repository', {}).get('full_name')
+
+        print(f"PR action: {action}")
+        print(f"PR branch: {branch}")
+        print(f"PR merged: {pr.get('merged')}")
+        print(f"PR sender: {sender}")
+        print(f"PR repo: {repo_full_name}")
 
         # Faqat task/ branch larini kuzatamiz
         if not branch.startswith('task/'):
@@ -166,11 +191,20 @@ class GitHubWebHookView(views.APIView):
             logger.warning(f"User topilmadi — github_username: {sender}")
             return
 
+        try:
+            from apps.management.models import Project
+            project = Project.objects.get(github_url__icontains=repo_full_name)
+        except Project.DoesNotExist:
+            logger.warning(f"Loyiha topilmadi - github_repo: {repo_full_name}")
+            return
+        except Project.MultipleObjectsReturned:
+            project = Project.objects.filter(github_url__icontains=repo_full_name).first()
+
         # Task ni topamiz
         try:
-            task = Task.objects.get(slug=task_slug)
+            task = Task.objects.get(slug=task_slug, project=project)
         except Task.DoesNotExist:
-            logger.warning(f"Task topilmadi — slug: {task_slug}")
+            logger.warning(f"Task topilmadi — slug: {task_slug}, repo: {project}")
             return
 
         if action == 'opened':
@@ -178,13 +212,12 @@ class GitHubWebHookView(views.APIView):
             content = f"**PR ochildi:** [{pr.get('title')}]({pr.get('html_url')})"
 
         elif action == 'closed' and pr.get('merged'):
-            # PR merge qilindi — task ni done qilamiz va comment qo'shamiz
             content = "**PR merge qilindi** — task bajarildi."
             try:
-                task.is_done = True
-                task.save(update_fields=['is_done'])
+                task.status = 'done'
+                task.save(update_fields=['status'])  # is_done emas, status
             except Exception as e:
-                logger.error(f"Task.is_done yangilashda xato: {e}")
+                logger.error(f"Task.status yangilashda xato: {e}")
                 return
         else:
             # 'closed' (merged emas), 'reopened', va h.k. — e'tiborsiz

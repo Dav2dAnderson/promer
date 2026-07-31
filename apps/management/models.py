@@ -26,7 +26,7 @@ class Project(BaseModel):
     description = models.TextField(null=True, blank=True)
     owner = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='projects')
     contributors = models.ManyToManyField('accounts.CustomUser', related_name="cont_projects", blank=True)
-    github_url = models.URLField(null=True, blank=True)
+    github_url = models.CharField(max_length=200, blank=True, null=True, help_text="For example: Dav2dAnderson/project")
     is_public = models.BooleanField(default=False)
 
     def __str__(self):
