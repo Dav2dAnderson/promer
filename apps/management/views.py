@@ -8,6 +8,9 @@ from rest_framework.response import Response
 
 from drf_spectacular.utils import extend_schema, extend_schema_view
 
+from apps.notifications.services import send_notification
+from apps.notifications.models import Notification
+
 from .serializers import (
     ProjectListSerializer, 
     ProjectDetailSerializer, 
@@ -310,13 +313,23 @@ class TasksViewSet(viewsets.ModelViewSet):
             if project.owner != self.request.user and not self.request.user.is_staff:
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You must be the project owner to create a task.")
-            serializer.save(from_user=self.request.user, project=project)
+            task = serializer.save(from_user=self.request.user, project=project)
         else:
             project = serializer.validated_data.get('project')
             if project and project.owner != self.request.user and not self.request.user.is_staff:
                 from rest_framework.exceptions import PermissionDenied
                 raise PermissionDenied("You must be the project owner to create a task.")
-            serializer.save(from_user=self.request.user)
+            task = serializer.save(from_user=self.request.user)
+
+        if task.to_user:
+            send_notification(
+                user=task.to_user,
+                title='New task',
+                message=f"Task: '{task.title}'.",
+                notification_type=Notification.Type.TASK_ASSIGNED,
+                link=f'/projects/{task.project.slug}/tasks/{task.slug}/',
+                send_email=True,
+            )   
     
     def get_serializer_class(self):
         if self.action in ['create', 'retrieve', 'delete', 'update', 'partial_update']:

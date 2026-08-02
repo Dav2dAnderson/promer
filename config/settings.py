@@ -51,6 +51,7 @@ INSTALLED_APPS = [
     'corsheaders',
     'debug_toolbar',
     'django_filters',
+    'channels',
 
     'rest_framework',
     'rest_framework.authtoken',
@@ -69,6 +70,7 @@ INSTALLED_APPS = [
 
     'apps.accounts',
     'apps.management',
+    'apps.notifications',
 ]
 
 SITE_ID = 1
@@ -164,7 +166,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-
+ASGI_APPLICATION = 'config.asgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
@@ -224,3 +226,19 @@ SPECTACULAR_SETTINGS = {
 
 
 GITHUB_WEBHOOK_SECRET = config('GITHUB_WEBHOOK_SECRET') # You can generate a secure secret key for this
+
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            'hosts': [config('REDIS_URL', default='redis://localhost:6379/0')],
+        },
+    },
+}
+
+
+"""
+EMAIL CONFIGURATIONS
+"""
+DEFAULT_FROM_EMAIL='dav2danderson@gmail.com'
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
