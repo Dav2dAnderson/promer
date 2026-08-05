@@ -81,7 +81,7 @@ def _send_websocket_notification(*, user, notification):
 
     try:
         async_to_sync(channel_layer.group_send)(
-            f'notification_{user.id}',
+            f'notifications_{user.id}',
             {
                 'type': 'notification.message',
                 'data': {

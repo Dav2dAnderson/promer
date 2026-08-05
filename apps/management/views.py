@@ -225,6 +225,15 @@ class ReceivedApplicationsViewSet(viewsets.ModelViewSet):
         application.is_accepted = True  # Keep for backward compatibility
         application.project.contributors.add(application.user)
         application.save(update_fields=['status', 'is_accepted'])
+
+        send_notification(
+            user=application.user,
+            title='Application accepted',
+            message=f"Your application for {application.project.name} accepted.",
+            notification_type=Notification.Type.APPLICATION_ACCEPTED,
+            link=f'/projects/{application.project.slug}',
+            send_email=True,
+        )
         return Response({'message': 'Application accepted.'}, status=status.HTTP_200_OK)
     
     @extend_schema(
@@ -242,6 +251,16 @@ class ReceivedApplicationsViewSet(viewsets.ModelViewSet):
         application.status = 'rejected'
         application.is_accepted = False  # Keep for backward compatibility
         application.save(update_fields=['status', 'is_accepted'])
+
+        send_notification(
+            user=application.user,
+            title='Application rejected',
+            message=f"Your application for {application.project.name} rejected.",
+            notification_type=Notification.Type.APPLICATION_REJECTED,
+            link=f'/projects/{application.project.slug}/',
+            send_email=True,
+        )
+
         return Response({'message': 'Application rejected.'}, status=status.HTTP_200_OK)
     
 
@@ -388,6 +407,17 @@ class TasksViewSet(viewsets.ModelViewSet):
 
         task.status = 'done'
         task.save(update_fields=['status'])
+
+        if task.to_user:
+            send_notification(
+                user=task.to_user,
+                title='Task approved',
+                message=f"Task: {task.title}\nThis task is approved.",
+                notification_type=Notification.Type.TASK_COMPLETED,
+                link=f'/projects/{task.project.slug}/tasks/{task.slug}/',
+                send_email=True,
+            )
+    
         return Response({'message': 'Task approved and marked as done.'}, status=status.HTTP_200_OK)
 
 

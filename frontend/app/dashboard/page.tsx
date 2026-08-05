@@ -17,12 +17,18 @@ export default function DashboardPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [stats, setStats] = useState({ totalProjects: 0, activeTasks: 0, pendingApplications: 0 })
   const [isLoading, setIsLoading] = useState(true)
-  const { user } = useAuth()
+  const { user, isLoading: authLoading } = useAuth()
 
   useEffect(() => {
+    if (authLoading || !user) {
+      return
+    }
+
     const fetchData = async () => {
       try {
-        const projectsRes = await api.get<Project[]>('/management/projects/')
+        const projectsRes = await api.get<Project[]>('/management/projects/', {
+          params: { my_projects: true },
+        })
         setProjects(projectsRes.data.slice(0, 5))
         
         // Fetch tasks from first project if available
@@ -51,7 +57,7 @@ export default function DashboardPage() {
     }
 
     fetchData()
-  }, [])
+  }, [authLoading, user])
 
   const StatCard = ({ title, value, icon: Icon }: { title: string; value: number; icon: any }) => (
     <div className="surface-panel p-5">
@@ -65,7 +71,7 @@ export default function DashboardPage() {
     </div>
   )
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <MainLayout breadcrumb={['Dashboard']}>
         <div className="flex items-center justify-center h-64">

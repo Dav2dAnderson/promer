@@ -12,6 +12,8 @@ from rest_framework import views, status
 from rest_framework.response import Response
 
 from apps.management.models import Task, TaskComment
+from apps.notifications.models import Notification
+from apps.notifications.services import send_notification
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -216,6 +218,17 @@ class GitHubWebHookView(views.APIView):
             try:
                 task.status = 'done'
                 task.save(update_fields=['status'])  # is_done emas, status
+
+                # Notification
+                if task.to_user:
+                    send_notification(
+                        user=task.from_user,
+                        title='Merged into main.',
+                        message=f"PR for {task.title} merged into main branch",
+                        notification_type=Notification.Type.PR_MERGED,
+                        link=f"/projects/{task.project.slug}/tasks/{task.slug}/",
+                        send_email=False,
+                    )
             except Exception as e:
                 logger.error(f"Task.status yangilashda xato: {e}")
                 return

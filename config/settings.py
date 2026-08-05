@@ -39,6 +39,7 @@ CORS_ALLOW_CREDENTIALS = True
 # Application definition
 
 INSTALLED_APPS = [
+    'daphne',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -227,18 +228,26 @@ SPECTACULAR_SETTINGS = {
 
 GITHUB_WEBHOOK_SECRET = config('GITHUB_WEBHOOK_SECRET') # You can generate a secure secret key for this
 
-CHANNEL_LAYERS = {
-    'default': {
-        'BACKEND': 'channels_redis.core.RedisChannelLayer',
-        'CONFIG': {
-            'hosts': [config('REDIS_URL', default='redis://localhost:6379/0')],
+if DEBUG:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels.layers.InMemoryChannelLayer',
         },
-    },
-}
+    }
+# Production uchun
+else:
+    CHANNEL_LAYERS = {
+        'default': {
+            'BACKEND': 'channels_redis.core.RedisChannelLayer',
+            'CONFIG': {
+                'hosts': [config('REDIS_URL', default='redis://localhost:6379/0')],
+            },
+        },
+    }
 
 
 """
 EMAIL CONFIGURATIONS
 """
-DEFAULT_FROM_EMAIL='dav2danderson@gmail.com'
+DEFAULT_FROM_EMAIL = 'dav2danderson@gmail.com'
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'

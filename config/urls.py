@@ -24,6 +24,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('apps.accounts.urls')),
     path('api/management/', include('apps.management.urls')),
+    path('api/notifications/', include('apps.notifications.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('swagger/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
@@ -31,5 +32,8 @@ urlpatterns = [
 
 if settings.DEBUG:
     import debug_toolbar
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+
     urlpatterns = [path('__debug__/', include(debug_toolbar.urls))] + urlpatterns
+    urlpatterns += staticfiles_urlpatterns()
 
