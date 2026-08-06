@@ -22,4 +22,4 @@ application = ProtocolTypeRouter({
     'websocket': middleware.JWTAuthMiddleware(
         URLRouter(routing.websocket_urlpatterns)
     ),
-})
+})  

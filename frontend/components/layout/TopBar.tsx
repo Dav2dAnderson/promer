@@ -54,43 +54,105 @@ export function TopBar({ breadcrumb = [] }: TopBarProps) {
 
     fetchNotifications()
 
-    const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || 'http://127.0.0.1:8000/api').replace(/\/$/, '')
+    const apiBaseUrl = (process.env.NEXT_PUBLIC_API_URL || (typeof window !== 'undefined'
+      ? `${window.location.protocol}//${window.location.hostname}:8000/api`
+      : 'http://127.0.0.1:8000/api')).replace(/\/$/, '')
     const wsBaseUrl = process.env.NEXT_PUBLIC_WS_URL
       ? process.env.NEXT_PUBLIC_WS_URL.replace(/\/$/, '')
-      : apiBaseUrl.replace(/\/api\/?$/, '').replace(/^https?:/, (protocol) => (protocol === 'https:' ? 'wss:' : 'ws:'))
+      : (typeof window !== 'undefined'
+        ? `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}:8000`
+        : apiBaseUrl.replace(/\/api\/?$/, '').replace(/^https?:/, (protocol) => (protocol === 'https:' ? 'wss:' : 'ws:')))
 
-    let socket: WebSocket | null = null
-    let reconnectTimeoutId: any = null
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null
+    let reconnectAttempts = 0
+    let shouldCloseSocket = false
     let isMounted = true
 
-    const connect = () => {
-      const token = getToken()
-      if (!token || !isMounted) {
-        return
+    const clearReconnectTimer = () => {
+      if (reconnectTimer) {
+        clearTimeout(reconnectTimer)
+        reconnectTimer = null
       }
+    }
 
-      socket = new WebSocket(`${wsBaseUrl}/ws/notifications/?token=${encodeURIComponent(token)}`)
+    const getSocketUrl = () => {
+      const token = getToken()
+      if (!token) {
+        return ''
+      }
+      return `${wsBaseUrl}/ws/notifications/?token=${encodeURIComponent(token)}`
+    }
+
+    const cleanupSocket = () => {
+      shouldCloseSocket = true
+      clearReconnectTimer()
+      const socket = socketRef.current
+      if (socket) {
+        socket.onopen = null
+        socket.onmessage = null
+        socket.onerror = null
+        socket.onclose = null
+        socket.close(1000, 'Component unmount')
+        socketRef.current = null
+      }
+    }
+
+    const connect = () => {
+      if (!isMounted || shouldCloseSocket) return
+
+      const socketUrl = getSocketUrl()
+      if (!socketUrl) return
+
+      const socket = new WebSocket(socketUrl)
       socketRef.current = socket
 
+      socket.onopen = () => {
+        reconnectAttempts = 0
+        console.info('Notification socket connected', socketUrl)
+      }
+
       socket.onmessage = (event) => {
-        const payload = JSON.parse(event.data)
-        setNotifications((prev) => [payload, ...prev])
+        try {
+          const payload = JSON.parse(event.data)
+          setNotifications((prev) => [payload, ...prev])
+        } catch (error) {
+          console.error('Failed to parse notification payload:', error, event.data)
+        }
       }
 
       socket.onerror = (event) => {
-        console.error('Notification socket error', event)
+        if (shouldCloseSocket || !isMounted) {
+          return
+        }
+        console.error('Notification socket error', socketUrl, event)
       }
 
       socket.onclose = (event) => {
         socketRef.current = null
-        if (!event.wasClean && isMounted) {
-          console.error('Notification socket closed unexpectedly, reconnecting in 5s...', event.code, event.reason)
-          reconnectTimeoutId = setTimeout(() => {
-            if (isMounted) {
-              connect()
-            }
-          }, 5000)
+        clearReconnectTimer()
+
+        const intentionalClose = shouldCloseSocket || event.code === 1000
+        if (intentionalClose) {
+          return
         }
+
+        if (!isMounted) {
+          return
+        }
+
+        reconnectAttempts += 1
+        if (reconnectAttempts > 5) {
+          console.error('Notification socket failed after max reconnect attempts', socketUrl, event.code, event.reason)
+          return
+        }
+
+        const delay = Math.min(5000, 1000 * reconnectAttempts)
+        console.warn('Notification socket closed unexpectedly, reconnecting in', delay, 'ms', event.code, event.reason)
+        reconnectTimer = setTimeout(() => {
+          if (isMounted && !shouldCloseSocket) {
+            connect()
+          }
+        }, delay)
       }
     }
 
@@ -98,13 +160,7 @@ export function TopBar({ breadcrumb = [] }: TopBarProps) {
 
     return () => {
       isMounted = false
-      if (socket) {
-        socket.close()
-      }
-      if (reconnectTimeoutId) {
-        clearTimeout(reconnectTimeoutId)
-      }
-      socketRef.current = null
+      cleanupSocket()
     }
   }, [user])
 
