@@ -20,9 +20,10 @@ from .serializers import (
     TaskDetailSerializer,
     TaskCommentSerializer
     )
-from .models import Project, Application, Task, TaskComment
+from .models import Project, Application, Task, TaskComment, ProjectMember
 from .permissions import IsNotProjectOwner, IsManager, IsProjectOwner, IsAdminOrApplicationOwner, IsAdminOrOwner
 from .filters import ProjectFilter
+from .constants import PROJECT_ROLES
 # Create your views here.
 
 
@@ -94,6 +95,38 @@ class ProjectViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
 
+    @action(detail=True, methods=['get'], url_path='members')
+    def members(self, request, slug=None):
+        """
+        GET /api/management/projects/{slug}/members/
+        Loyiha a'zolarini rol bo'yicha guruhlangan holda qaytaradi.
+        """
+        project = self.get_object()
+        project_members = ProjectMember.objects.filter(project=project).select_related(
+            'user'
+        ).order_by('role')
+
+        from itertools import groupby
+
+        result = []
+        role_display = dict(PROJECT_ROLES)
+
+        for role, members in groupby(project_members, key=lambda m: m.role):
+            result.append({
+                'role': role,
+                'role_display': role_display.get(role, role),
+                'members': [
+                    {
+                        'id': str(m.user.id),
+                        'username': m.user.username,
+                        'first_name': m.user.first_name,
+                        'last_name': m.user.last_name,
+                    }
+                    for m in members
+                ]
+            })
+        return Response(result)
+    
 
 @extend_schema_view(
     list=extend_schema(
@@ -221,9 +254,17 @@ class ReceivedApplicationsViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['patch'], url_path='accept')
     def accept(self, request, slug=None):
         application = self.get_object()
+        application.project.contributors.add(application.user)
+
+        ProjectMember.objects.get_or_create(
+            project=application.project,
+            user=application.user,
+            role={'role': application.role}
+        )
+
         application.status = 'accepted'
         application.is_accepted = True  # Keep for backward compatibility
-        application.project.contributors.add(application.user)
+
         application.save(update_fields=['status', 'is_accepted'])
 
         send_notification(

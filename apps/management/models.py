@@ -2,11 +2,15 @@ import uuid
 
 from django.db import models
 from django.utils.text import slugify
+from django.contrib.auth import get_user_model
 
 from base.models import BaseModel
 
-from apps.accounts.models import CustomUser
-# Create your models here.
+from .constants import PROJECT_ROLES
+
+User = get_user_model()
+
+
 
 def get_deleted_user():
     from apps.accounts.models import CustomUser
@@ -24,8 +28,8 @@ class Project(BaseModel):
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=150, null=True, blank=True, unique=True)
     description = models.TextField(null=True, blank=True)
-    owner = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='projects')
-    contributors = models.ManyToManyField('accounts.CustomUser', related_name="cont_projects", blank=True)
+    owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name='projects')
+    contributors = models.ManyToManyField(User, related_name="cont_projects", blank=True)
     github_url = models.CharField(max_length=200, blank=True, null=True, help_text="For example: Dav2dAnderson/project")
     is_public = models.BooleanField(default=False)
 
@@ -61,13 +65,13 @@ class Task(BaseModel):
         related_name='tasks'
         )
     to_user = models.ForeignKey(
-        'accounts.CustomUser', 
+        User, 
         on_delete=models.SET_DEFAULT, 
         default=get_deleted_user, 
         related_name='assigned_tasks'
         )
     from_user = models.ForeignKey(
-        'accounts.CustomUser',
+        User,
         on_delete=models.SET_DEFAULT,
         default=get_deleted_user, 
         related_name='created_tasks'
@@ -89,7 +93,7 @@ class Task(BaseModel):
 
 class TaskComment(BaseModel):
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name='comments')
-    user = models.ForeignKey('accounts.CustomUser', on_delete=models.CASCADE, related_name='task_comments')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='task_comments')
     content = models.TextField()
     file = models.FileField(upload_to='task_comments/', null=True, blank=True)
     github_url = models.URLField(null=True, blank=True)
@@ -109,14 +113,15 @@ class Application(BaseModel):
         ('accepted', 'Accepted'),
         ('rejected', 'Rejected'),
     )
-    
+
     title = models.CharField(max_length=100)
     slug = models.SlugField(max_length=150, null=True, blank=True, unique=True)
     description = models.TextField()
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     is_accepted = models.BooleanField(default=False)  # Keep for backward compatibility
+    role = models.CharField(max_length=60, choices=PROJECT_ROLES)
     user = models.ForeignKey(
-        'accounts.CustomUser',
+        User,
         on_delete=models.CASCADE,
         related_name='created_applications'        
         )
@@ -140,3 +145,19 @@ class Application(BaseModel):
         verbose_name_plural = 'Applications'
 
 
+class ProjectMember(BaseModel):
+    """
+    Project members
+    """
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='members')
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='project_memberships')
+    role = models.CharField(max_length=30, choices=PROJECT_ROLES)
+
+    class Meta(BaseModel.Meta):
+        unique_together = ('project', 'user')
+        indexes = BaseModel.Meta.indexes + [
+            models.Index(fields=['project', 'role'])
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} - {self.project.name} ({self.role})"

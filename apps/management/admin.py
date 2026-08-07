@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Project, Task, Application, TaskComment
+from .models import Project, Task, Application, TaskComment, ProjectMember
 # Register your models here.
 
 
@@ -19,4 +19,7 @@ class ApplicationAdmin(admin.ModelAdmin):
 @admin.register(TaskComment)
 class TaskCommentAdmin(admin.ModelAdmin):
     list_display = ['task', 'user', 'created_at']
-    
+
+@admin.register(ProjectMember)
+class ProjectMemberAdmin(admin.ModelAdmin):
+    list_display = ['project', 'user', 'role']
