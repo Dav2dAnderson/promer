@@ -65,6 +65,19 @@ export type Project = {
   updated_at: string
 }
 
+export type ProjectMember = {
+  id: string
+  username: string
+  first_name?: string
+  last_name?: string
+}
+
+export type ProjectMemberGroup = {
+  role: string
+  role_display: string
+  members: ProjectMember[]
+}
+
 export type TaskStatus = 'pending' | 'in_progress' | 'in-progress' | 'pending_approval' | 'done'
 
 export type CreateProjectRequest = {

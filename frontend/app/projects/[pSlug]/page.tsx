@@ -12,7 +12,8 @@ import { Modal } from '@/components/ui/Modal'
 import { CheckSquare, Users, Send, Settings, Plus, Trash2, Calendar, Edit2, MoreVertical, User } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
-import type { Project, Task, Application, CreateTaskRequest, UpdateTaskRequest, ProjectFormData } from '@/types'
+import type { Project, Task, Application, CreateTaskRequest, UpdateTaskRequest, ProjectFormData, ProjectMemberGroup } from '@/types'
+import { MembersList } from '@/components/ui/MembersList'
 
 type Tab = 'tasks' | 'applications' | 'settings'
 
@@ -25,6 +26,8 @@ export default function ProjectDetailPage() {
   const [tasks, setTasks] = useState<Task[]>([])
   const [applications, setApplications] = useState<Application[]>([])
   const [availableUsers, setAvailableUsers] = useState<Array<{ id: number; username: string }>>([])
+  const [membersGroups, setMembersGroups] = useState<ProjectMemberGroup[]>([])
+  const [isMembersLoading, setIsMembersLoading] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isDeleting, setIsDeleting] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -114,6 +117,37 @@ export default function ProjectDetailPage() {
 
     fetchData()
   }, [pSlug, router])
+
+  useEffect(() => {
+    if (activeTab !== 'members') return
+
+    let mounted = true
+    setIsMembersLoading(true)
+    api.get<ProjectMemberGroup[]>(`/management/projects/${pSlug}/members/`)
+      .then((res) => {
+        if (!mounted) return
+        setMembersGroups(res.data)
+      })
+      .catch((err) => {
+        console.error('Failed to fetch members:', err)
+        // Fallback to contributors from project if available
+        if (project) {
+          const fallback = [
+            {
+              role: 'contributors',
+              role_display: 'Contributors',
+              members: (project.contributors || []).map((c) => ({ id: c.id.toString(), username: c.username, first_name: c.first_name, last_name: c.last_name })),
+            },
+          ]
+          if (mounted) setMembersGroups(fallback)
+        }
+      })
+      .finally(() => {
+        if (mounted) setIsMembersLoading(false)
+      })
+
+    return () => { mounted = false }
+  }, [activeTab, pSlug, project])
 
   // Close dropdown when clicking outside
   const handleOutsideClick = useCallback(() => {
@@ -313,6 +347,7 @@ export default function ProjectDetailPage() {
   const tabs = [
     { id: 'tasks' as Tab, label: 'Tasks', icon: CheckSquare },
     { id: 'applications' as Tab, label: 'Applications', icon: Send },
+    { id: 'members' as Tab, label: 'Members', icon: Users },
     ...(isOwner ? [{ id: 'settings' as Tab, label: 'Settings', icon: Settings }] : []),
   ]
 
@@ -529,6 +564,20 @@ export default function ProjectDetailPage() {
                     </div>
                   )}
                 </div>
+              )}
+            </div>
+          )}
+
+
+          {activeTab === 'members' && (
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold">Members</h2>
+              {isMembersLoading ? (
+                <div className="flex items-center justify-center h-24">
+                  <Spinner />
+                </div>
+              ) : (
+                <MembersList groups={membersGroups} />
               )}
             </div>
           )}
