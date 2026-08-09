@@ -15,7 +15,7 @@ import api from '@/lib/axios'
 import type { Project, Task, Application, CreateTaskRequest, UpdateTaskRequest, ProjectFormData, ProjectMemberGroup } from '@/types'
 import { MembersList } from '@/components/ui/MembersList'
 
-type Tab = 'tasks' | 'applications' | 'settings'
+type Tab = 'tasks' | 'applications' | 'members' | 'settings'
 
 export default function ProjectDetailPage() {
   const params = useParams()

@@ -7,15 +7,16 @@ import { TaskCard } from '@/components/ui/TaskCard'
 import { Button } from '@/components/ui/Button'
 import { Spinner } from '@/components/ui/Spinner'
 import { EmptyState } from '@/components/ui/EmptyState'
-import { Folder, CheckSquare, Send, Plus, ArrowUpRight, Activity } from 'lucide-react'
+import { Folder, CheckSquare, Send, Plus, ArrowUpRight, Activity, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
-import type { Project, Task } from '@/types'
+import type { AnalyticsOverviewResponse, Project, Task } from '@/types'
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [tasks, setTasks] = useState<Task[]>([])
   const [stats, setStats] = useState({ totalProjects: 0, activeTasks: 0, pendingApplications: 0 })
+  const [analytics, setAnalytics] = useState<AnalyticsOverviewResponse | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const { user, isLoading: authLoading } = useAuth()
 
@@ -43,11 +44,23 @@ export default function DashboardPage() {
           }
         }
         
-        setStats({
-          totalProjects: projectsRes.data.length,
-          activeTasks: fetchedTasks.filter(t => t.status !== 'done').length,
-          pendingApplications: 0,
-        })
+        try {
+          const analyticsRes = await api.get<AnalyticsOverviewResponse>('/analytics/overview/')
+          setAnalytics(analyticsRes.data)
+          setStats({
+            totalProjects: projectsRes.data.length,
+            activeTasks: fetchedTasks.filter(t => t.status !== 'done').length,
+            pendingApplications: analyticsRes.data.applications.pending,
+          })
+        } catch (analyticsError) {
+          console.error('Failed to fetch analytics overview:', analyticsError)
+          setAnalytics(null)
+          setStats({
+            totalProjects: projectsRes.data.length,
+            activeTasks: fetchedTasks.filter(t => t.status !== 'done').length,
+            pendingApplications: 0,
+          })
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error)
         // 401 errors are handled by axios interceptor - no redirect needed here
@@ -106,6 +119,45 @@ export default function DashboardPage() {
           <Button variant="secondary" href="/projects">
             Browse Projects <ArrowUpRight size={16} />
           </Button>
+          <Button variant="secondary" href="/analytics" className="gap-2">
+            <BarChart3 size={16} />
+            Open Analytics
+          </Button>
+        </div>
+
+        {/* Analytics Snapshot */}
+        <div className="surface-panel p-6">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="eyebrow mb-1">Operations snapshot</p>
+              <h2 className="text-xl font-semibold">Analytics at a glance</h2>
+            </div>
+            <Button variant="secondary" href="/analytics" size="sm">
+              View full report
+            </Button>
+          </div>
+          {analytics ? (
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="rounded-lg border border-white/10 bg-background/70 p-4">
+                <p className="text-sm text-zinc-400">Total projects</p>
+                <p className="mt-2 text-2xl font-semibold">{analytics.projects.total}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-background/70 p-4">
+                <p className="text-sm text-zinc-400">Tasks completed</p>
+                <p className="mt-2 text-2xl font-semibold">{analytics.tasks.completed}</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-background/70 p-4">
+                <p className="text-sm text-zinc-400">Completion rate</p>
+                <p className="mt-2 text-2xl font-semibold">{analytics.tasks.completion_rate}%</p>
+              </div>
+              <div className="rounded-lg border border-white/10 bg-background/70 p-4">
+                <p className="text-sm text-zinc-400">Pending applications</p>
+                <p className="mt-2 text-2xl font-semibold">{analytics.applications.pending}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-zinc-400">Analytics are unavailable right now. Open the analytics view once the backend response is ready.</p>
+          )}
         </div>
 
         {/* Recent Projects */}

@@ -20,7 +20,7 @@ class ProjectAnalyticsView(APIView):
     def get(self, request, slug):
         project = get_object_or_404(Project, slug=slug)
 
-        if request.user != project.owner or request.user not in project.contributors.all():
+        if request.user != project.owner and request.user not in project.contributors.all():
             return Response({'error': 'Permission denied'}, status=403)
 
         tasks = Task.objects.filter(project=project)
@@ -72,7 +72,7 @@ class ProjectMemberAnalyticsView(APIView):
     def get(self, request, slug):
         project = get_object_or_404(Project, slug=slug)
 
-        if request.owner != project.owner and not request.user.is_staff:
+        if request.user != project.owner and not request.user.is_staff:
             return Response({'error': 'Permission denied'}, status=403)
 
         from apps.management.models import ProjectMember
@@ -141,8 +141,8 @@ class OverviewAnalyticsView(APIView):
         return Response({
             'projects': {
                 'total': total_projects,
-                'active': projects.filter(is_finished=False).count(),
-                'finished': projects.filter(is_finished=True).count(),
+                'public': projects.filter(is_public=True).count(),
+                'private': projects.filter(is_public=False).count(),
             },
             'tasks': {
                 'total': total_tasks,

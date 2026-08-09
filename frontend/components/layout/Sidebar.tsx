@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { Home, Folder, User, Menu, X, Sparkles, Plus } from 'lucide-react'
+import { Home, Folder, User, Menu, X, Sparkles, BarChart3 } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
 
 export function Sidebar() {
@@ -13,6 +13,7 @@ export function Sidebar() {
 
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
+    { href: '/analytics', label: 'Analytics', icon: BarChart3 },
     { href: '/projects', label: 'Projects', icon: Folder },
     { href: '/profile', label: 'Profile', icon: User },
   ]

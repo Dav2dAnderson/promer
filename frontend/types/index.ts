@@ -156,6 +156,62 @@ export type PaginatedResponse<T> = {
   results: T[]
 }
 
+export type AnalyticsOverviewResponse = {
+  projects: {
+    total: number
+    public: number
+    private: number
+  }
+  tasks: {
+    total: number
+    completed: number
+    completion_rate: number
+    completed_this_week: number
+  }
+  applications: {
+    pending: number
+  }
+}
+
+export type ProjectAnalyticsResponse = {
+  project: {
+    name: string
+    slug: string
+    owner: string
+    contributors_count: number
+  }
+  tasks: {
+    total: number
+    completed: number
+    completed_rate: number
+    by_status: {
+      pending: number
+      in_progress: number
+      pending_approval: number
+      done: number
+    }
+  }
+  github: {
+    completed_via_pr: number
+  }
+}
+
+export type MemberAnalyticsResponse = {
+  user: {
+    id: string
+    username: string
+    full_name: string
+    role: string
+  }
+  tasks: {
+    total: number
+    completed: number
+    completion_rate: number
+    pending: number
+    in_progress: number
+  }
+}
+
 export type ApiError = {
   detail?: string
   [key: string]: string | string[] | undefined
