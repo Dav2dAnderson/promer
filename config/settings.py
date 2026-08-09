@@ -73,6 +73,7 @@ INSTALLED_APPS = [
     'apps.accounts',
     'apps.management',
     'apps.notifications',
+    'apps.analytics',
 ]
 
 SITE_ID = 1
