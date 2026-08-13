@@ -10,6 +10,7 @@ from rest_framework import permissions
 
 from apps.management.models import Project, Task
 
+
 class ProjectAnalyticsView(APIView):
     """
     GET /api/analytics/projects/{slug}/
@@ -103,6 +104,7 @@ class ProjectMemberAnalyticsView(APIView):
                     'in_progress': user_tasks.filter(status='in_progress').count(),
                 }
             })
+            
         return Response(result)
 
 
