@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = config('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '.ngrok-free.app', '.ngrok.io']
 
@@ -102,11 +102,10 @@ REST_AUTH = {
     'USE_JWT': True,
     'JWT_AUTH_COOKIE': 'my-app-auth',
     'JWT_AUTH_REFRESH_COOKIE': 'my-app-refresh-token',
-    'JWT_AUTH_HTTPONLY': False,  # Buni True qilsangiz, token faqat cookie ichida ketadi, response toza chiqadi
+    'JWT_AUTH_HTTPONLY': True,  # Buni True qilsangiz, token faqat cookie ichida ketadi, response toza chiqadi
     'SESSION_LOGIN': False,
 
     'REGISTER_SERIALIZER': 'apps.accounts.serializers.CustomRegisterSerializer',
-
     'USER_DETAILS_SERIALIZER': 'apps.accounts.serializers.CustomUserDetailSerializer',
     'JWT_SERIALIZER': 'apps.accounts.serializers.CustomJWTSerializer',
 
@@ -178,6 +177,7 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'ATOMIC_REQUESTS': True
     }
 }
 

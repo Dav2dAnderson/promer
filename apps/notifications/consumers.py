@@ -18,17 +18,17 @@ class NotificationConsumer(AsyncWebsocketConsumer):
         user = self.scope.get('user')
 
         if not user or not user.is_authenticated:
-            await self.close()
+            await self.close(code=4001)
             return
 
-        self.group_name = f'notifications_{user.id}'
+        self.group_name = f'notifications_{str(user.id).replace("-", "")}'
 
         await self.channel_layer.group_add(
             self.group_name,
             self.channel_name
         )
         await self.accept()
-        logger.info(f"WebSocket connected: {user.username}")
+        logger.info(f"WebSocket connected: {user.id}")
 
     async def disconnect(self, code):
         if hasattr(self, 'group_name'):

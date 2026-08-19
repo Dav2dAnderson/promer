@@ -1,45 +1,57 @@
+import logging
+
 from channels.middleware import BaseMiddleware
 from channels.db import database_sync_to_async
 
 from django.contrib.auth.models import AnonymousUser
+from django.contrib.auth import get_user_model
 
 from rest_framework_simplejwt.tokens import AccessToken
 from rest_framework_simplejwt.exceptions import TokenError, InvalidToken
 
+logger = logging.getLogger(__name__)
+
+User = get_user_model()
+
 
 @database_sync_to_async
 def get_user_from_token(token_key):
-    from django.contrib.auth import get_user_model
-
-    User = get_user_model()
-
+    """
+    JWT Access Token orqali foydalanuvchini bazadan qidirib topadi.
+    Token xato bo'lsa yoki foydalanuvchi topilmasa None qaytaradi.
+    """
     try:
         token = AccessToken(token_key)
         user_id = token['user_id']
         return User.objects.get(id=user_id)
     except (InvalidToken, TokenError, User.DoesNotExist):
-        return AnonymousUser()
-
+        return None
+    
 
 class JWTAuthMiddleware(BaseMiddleware):
     """
-    WebSocket uchun JWT token orqali autentifikatsiya.
-    Token query parameter orqali yuboriladi:
-    ws://localhost:8000/ws/notifications/?token=<access_token>
+    WebSocket ulanishlari uchun xavfsiz Cookie-based JWT autentifikatsiya middleware-i.
+    Token brauzer cookie'sidan ('my-app-auth') o'qib olinadi.
     """
     async def __call__(self, scope, receive, send):
-        from urllib.parse import parse_qs
+        cookies = {}
 
-        query_string = scope.get('query_string', b'').decode('utf-8', errors='ignore')
-        print(query_string)
-        params = parse_qs(query_string)
-        token_list = params.get('token', [])
-
-        if token_list:
-            token = token_list[0]
-            scope['user'] = await get_user_from_token(token)
-        else:
-            scope['user'] = AnonymousUser()
-
+        for header in scope.get('headers', []):
+            if header[0] == b'cookie':
+                for cookie in header[1].decode().split(';'):
+                    if '=' in cookie:
+                        k, v = cookie.strip().split('=', 1)
+                        cookies[k] = v
+        token = cookies.get('my-app-auth')
+        user = None
+        if token:
+            user = await get_user_from_token(token)
+        if not user or user.is_anonymous:
+            logger.warning("WebSocket auth failed: Invalid token or missing cookie.")
+            await send({
+                "type": "websocket.close",
+                "code": 4001,
+            })
+            return
+        scope['user'] = user
         return await super().__call__(scope, receive, send)
-    

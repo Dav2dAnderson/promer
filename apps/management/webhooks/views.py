@@ -40,6 +40,12 @@ class GitHubWebHookView(views.APIView):
         # GitHub yuborgan HMAC-SHA256 imzosini tekshirish
         # Agar imzo noto'g'ri bo'lsa — so'rov soxta, 403 qaytaramiz
 
+        if request.content_type != 'application/json':
+            return Response(
+                {'error': 'Content-Type must be application/json'},
+                status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE
+            )
+
         raw_body = request.body
 
         signature = request.headers.get('X-Hub-Signature-256', '')
@@ -173,11 +179,7 @@ class GitHubWebHookView(views.APIView):
         sender = payload.get('sender', {}).get('login')
         repo_full_name = payload.get('repository', {}).get('full_name')
 
-        print(f"PR action: {action}")
-        print(f"PR branch: {branch}")
-        print(f"PR merged: {pr.get('merged')}")
-        print(f"PR sender: {sender}")
-        print(f"PR repo: {repo_full_name}")
+        logger.debug(f"PR event — action: {action}, branch: {branch}, sender: {sender}")
 
         # Faqat task/ branch larini kuzatamiz
         if not branch.startswith('task/'):

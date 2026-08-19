@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ChevronRight, LogOut, Bell, CheckCheck, ExternalLink } from 'lucide-react'
 import { useAuth } from '@/context/AuthContext'
-import api, { getToken } from '@/lib/axios'
+import api, { setToken } from '@/lib/axios'
 import type { Notification } from '@/types'
 
 interface TopBarProps {
@@ -76,11 +76,8 @@ export function TopBar({ breadcrumb = [] }: TopBarProps) {
     }
 
     const getSocketUrl = () => {
-      const token = getToken()
-      if (!token) {
-        return ''
-      }
-      return `${wsBaseUrl}/ws/notifications/?token=${encodeURIComponent(token)}`
+      // WebSocket URL no longer carries token in query string; backend reads cookie `my-app-auth`
+      return `${wsBaseUrl}/ws/notifications/`
     }
 
     const cleanupSocket = () => {
@@ -121,9 +118,7 @@ export function TopBar({ breadcrumb = [] }: TopBarProps) {
       }
 
       socket.onerror = (event) => {
-        if (shouldCloseSocket || !isMounted) {
-          return
-        }
+        if (shouldCloseSocket || !isMounted) return
         console.error('Notification socket error', socketUrl, event)
       }
 
@@ -133,6 +128,21 @@ export function TopBar({ breadcrumb = [] }: TopBarProps) {
 
         const intentionalClose = shouldCloseSocket || event.code === 1000
         if (intentionalClose) {
+          return
+        }
+
+        // Handle unauthorized/invalid token close code from backend
+        if (event.code === 4001) {
+          console.error('Notification socket closed: unauthorized or invalid token', event.code, event.reason)
+          // Attempt graceful recovery: clear token and redirect to login
+          try {
+            setToken('')
+          } catch (e) {
+            // ignore
+          }
+          if (typeof window !== 'undefined') {
+            window.location.href = '/login'
+          }
           return
         }
 
