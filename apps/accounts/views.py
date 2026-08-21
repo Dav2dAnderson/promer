@@ -1,6 +1,7 @@
 from django.shortcuts import render
 
 from dj_rest_auth.registration.views import RegisterView
+from dj_rest_auth.views import LoginView
 
 from rest_framework import permissions, views, status
 from rest_framework.response import Response
@@ -13,8 +14,14 @@ from .serializers import ManagerRequestSerializer
 from .models import ManagerRequest
 # Create your views here.
 
-class CustomRegister(RegisterView):
+
+class CustomLoginView(LoginView):
+    throttle_scope = 'auth_login'
+
+
+class CustomRegisterView(RegisterView):
     permission_classes = [IsNotAuthenticated]
+    throttle_scope = 'auth_register'
     
 
 class ManagerRequestView(views.APIView):

@@ -85,6 +85,20 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
     ],
+# --- THROTTLING SETTINGS ---
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',       # Anonim foydalanuvchilar uchun
+        'rest_framework.throttling.UserRateThrottle',       # Tizimga kirgan foydalanuvchilar uchun
+        'rest_framework.throttling.ScopedRateThrottle',     # Aniq view'lar uchun maxsus limitlar
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/day',        # Anonim foydalanuvchilar kuniga max 100 so'rov
+        'user': '1000/day',       # Tizimdagi foydalanuvchilar kuniga max 1000 so'rov
+        
+        # Sensitive endpoint'lar uchun maxsus scopelar:
+        'auth_login': '5/minute',    # Login uchun daqiqasiga 5 ta urinish (Brute-force'ga qarshi)
+        'auth_register': '3/hour',   # Ro'yxatdan o'tish uchun soatiga 3 ta urinish
+    }
 }
 
 AUTHENTICATION_BACKENDS = [

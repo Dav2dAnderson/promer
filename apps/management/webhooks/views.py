@@ -10,6 +10,7 @@ from django.contrib.auth import get_user_model
 
 from rest_framework import views, status
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
 
 from apps.management.models import Task, TaskComment
 from apps.notifications.models import Notification
@@ -18,6 +19,9 @@ from apps.notifications.services import send_notification
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+
+class WebhookRateThrottle(AnonRateThrottle):
+    rate = '30/minute'
 
 @method_decorator(csrf_exempt, name='dispatch')
 class GitHubWebHookView(views.APIView):
@@ -35,6 +39,7 @@ class GitHubWebHookView(views.APIView):
         Events: Pushes, Pull requests
     """
     permission_classes = []
+    throttle_classes = [WebhookRateThrottle]
 
     def post(self, request):
         # GitHub yuborgan HMAC-SHA256 imzosini tekshirish
@@ -47,15 +52,16 @@ class GitHubWebHookView(views.APIView):
             )
 
         raw_body = request.body
-
         signature = request.headers.get('X-Hub-Signature-256', '')
-        if not self._verify_signature(raw_body, signature):
-            return Response({'error': 'Invalid signature'}, status=status.HTTP_403_FORBIDDEN)
+
+        if not signature or not self._verify_signature(raw_body, signature):
+            logger.warning("GitHub webhook request rejected: Invalid or missing signature header.")
+            return Response({'error': 'Invalid or missing signature'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
             payload = json.loads(raw_body.decode('utf-8'))
         except json.JSONDecodeError:
-            return Response({"error": "Invalid JSON"}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": "Invalid JSON payload"}, status=status.HTTP_400_BAD_REQUEST)
 
         # GitHub event turini aniqlaymiz: 'push', 'pull_request', va h.k.
         event = request.headers.get('X-GitHub-Event', '')
@@ -73,23 +79,14 @@ class GitHubWebHookView(views.APIView):
 
     def _verify_signature(self, body, signature):
         """
-        GitHub HMAC-SHA256 imzosini tekshiradi.
-
-        GitHub har bir webhook so'rovini
-        settings.GITHUB_WEBHOOK_SECRET bilan imzolaydi.
-        Biz ham xuddi shu secret bilan hisoblаb, solishtiramiz.
-
-        Args:
-            body: So'rovning raw bytes body si
-            signature: GitHub yuborgan 'X-Hub-Signature-256' header qiymati
-
-        Returns:
-            bool: Imzo to'g'ri bo'lsa True, aks holda False
+        GitHub HMAC-SHA256 imzosini xavfsiz tekshiradi.
         """
-        if not signature:
-            return False
 
-        secret = settings.GITHUB_WEBHOOK_SECRET.encode()
+        secret_key = getattr(settings, 'GITHUB_WEBHOOK_SECRET', None)
+        if not secret_key or not signature.startswith('sha256='):
+            return False
+        
+        secret = secret_key.encode()
         mac = hmac.new(secret, msg=body, digestmod=hashlib.sha256)
         expected = 'sha256=' + mac.hexdigest()
 
@@ -97,19 +94,6 @@ class GitHubWebHookView(views.APIView):
         return hmac.compare_digest(signature, expected)
 
     def _handle_push(self, payload):
-        """
-        GitHub push eventini qayta ishlaydi.
-
-        Faqat 'task/' prefiksi bilan boshlangan branchlarni kuzatadi.
-        Masalan: git push origin task/login-page
-
-        Branch nomi: task/{task_slug} formatida bo'lishi kerak.
-        User ning github_username si GitHub pusher nomi bilan mos kelishi kerak.
-
-        Muvaffaqiyatli bo'lsa — tegishli Task ga TaskComment yaratiladi:
-            "Push qilindi - `task/login-page` (`owner/repo`)
-            - [commit message](commit url)"
-        """
         branch = payload.get('ref', '').replace('refs/heads/', '')
         pusher = payload.get('pusher', {}).get('name')
         commits = payload.get('commits', [])
@@ -126,14 +110,14 @@ class GitHubWebHookView(views.APIView):
         try:
             user = User.objects.get(github_username=pusher)
         except User.DoesNotExist:
-            logger.warning(f"User topilmadi — github_username: {pusher}")
+            logger.warning(f"User not found — github_username: {pusher}")
             return
 
         try:
             from apps.management.models import Project
             project = Project.objects.get(github_url__icontains=repo_full_name)
         except Project.DoesNotExist:
-            logger.warning(f"Loyiha topilmadi - github_repo: {repo_full_name}")
+            logger.warning(f"Project not found - github_repo: {repo_full_name}")
             return
         except Project.MultipleObjectsReturned:
             project = Project.objects.filter(github_url__icontains=repo_full_name).first()
@@ -143,7 +127,7 @@ class GitHubWebHookView(views.APIView):
         try:
             task = Task.objects.get(slug=task_slug, project=project)
         except Task.DoesNotExist:
-            logger.warning(f"Task topilmadi — slug: {task_slug}, repo: {project}")
+            logger.warning(f"Task not found — slug: {task_slug}, repo: {project}")
             return
 
         # Barcha commit xabarlarini markdown formatida birlashtirамиз
@@ -155,24 +139,13 @@ class GitHubWebHookView(views.APIView):
             TaskComment.objects.create(
                 task=task,
                 user=user,
-                content=f"**Push qilindi** - `{branch}` (`{repo_full_name}`)\n\n{commit_messages}",
+                content=f"**Pushed** - `{branch}` (`{repo_full_name}`)\n\n{commit_messages}",
                 github_url=payload.get('compare')  # push dagi barcha commitlar linki
             )
         except Exception as e:
-            logger.error(f"TaskComment yaratishda xato (push): {e}")
+            logger.error(f"Error in creating TaskComment (push): {e}")
 
     def _handle_pull_request(self, payload):
-        """
-        GitHub pull_request eventini qayta ishlaydi.
-
-        Kuzatiladigan actionlar:
-            - 'opened'         → PR ochildi — comment yaratiladi
-            - 'closed'+merged  → PR merge qilindi — task.is_done=True, comment yaratiladi
-            - boshqalar        → e'tiborsiz qoldiriladi
-
-        Branch nomi: task/{task_slug} formatida bo'lishi kerak.
-        User ning github_username si GitHub sender login i bilan mos kelishi kerak.
-        """
         action = payload.get('action')
         pr = payload.get('pull_request', {})
         branch = pr.get('head', {}).get('ref', '')
@@ -192,7 +165,7 @@ class GitHubWebHookView(views.APIView):
         try:
             user = User.objects.get(github_username=sender)
         except User.DoesNotExist:
-            logger.warning(f"User topilmadi — github_username: {sender}")
+            logger.warning(f"User not found — github_username: {sender}")
             return
 
         try:
@@ -208,15 +181,15 @@ class GitHubWebHookView(views.APIView):
         try:
             task = Task.objects.get(slug=task_slug, project=project)
         except Task.DoesNotExist:
-            logger.warning(f"Task topilmadi — slug: {task_slug}, repo: {project}")
+            logger.warning(f"Task not found — slug: {task_slug}, repo: {project}")
             return
 
         if action == 'opened':
             # PR yangi ochildi — faqat comment qo'shamiz
-            content = f"**PR ochildi:** [{pr.get('title')}]({pr.get('html_url')})"
+            content = f"**PR opened:** [{pr.get('title')}]({pr.get('html_url')})"
 
         elif action == 'closed' and pr.get('merged'):
-            content = "**PR merge qilindi** — task bajarildi."
+            content = "**PR merged** — task bajarildi."
             try:
                 task.status = 'done'
                 task.save(update_fields=['status'])  # is_done emas, status
@@ -232,7 +205,7 @@ class GitHubWebHookView(views.APIView):
                         send_email=False,
                     )
             except Exception as e:
-                logger.error(f"Task.status yangilashda xato: {e}")
+                logger.error(f"Error in updating Task.status: {e}")
                 return
         else:
             # 'closed' (merged emas), 'reopened', va h.k. — e'tiborsiz
@@ -246,4 +219,4 @@ class GitHubWebHookView(views.APIView):
                 github_url=pr.get('html_url')
             )
         except Exception as e:
-            logger.error(f"TaskComment yaratishda xato (PR): {e}")
+            logger.error(f"Error in creating TaskComment (PR): {e}")
