@@ -42,8 +42,8 @@ export default function ProfilePage() {
   useEffect(() => {
     const fetchManagerRequest = async () => {
       try {
-        const res = await api.get<ManagerRequest>('/accounts/manager-request/')
-        setManagerRequest(res.data)
+        const res = await api.get<ManagerRequest[]>('/accounts/manager-request/')
+        setManagerRequest(res.data[0] ?? null)
       } catch (error) {
         // No request exists
         setManagerRequest(null)
@@ -74,8 +74,8 @@ export default function ProfilePage() {
     try {
       await requestManagerAccess({ reason: requestReason })
       // Refresh manager request
-      const res = await api.get<ManagerRequest>('/accounts/manager-request/')
-      setManagerRequest(res.data)
+      const res = await api.get<ManagerRequest[]>('/accounts/manager-request/')
+      setManagerRequest(res.data[0] ?? null)
       setRequestReason('')
     } catch (error) {
       console.error('Failed to request manager access:', error)

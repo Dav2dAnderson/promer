@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 # for analytics 
 from django.db.models import Avg, F, Count, ExpressionWrapper, DurationField
+from django.db.models.functions import TruncDate
 
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -126,12 +127,28 @@ class OverviewAnalyticsView(APIView):
         total_tasks = tasks.count()
         completed_tasks = tasks.filter(status='done').count()
 
-        # Bu haftada bajarilgan tasklar
-        week_ago = timezone.now() - timezone.timedelta(days=7)
+        today = timezone.localdate()
+        week_start = today - timezone.timedelta(days=today.weekday())
+        week_end = week_start + timezone.timedelta(days=7)
         completed_this_week = tasks.filter(
             status='done',
-            updated_at__gte=week_ago
+            updated_at__date__gte=week_start,
+            updated_at__date__lt=week_end,
         ).count()
+        completed_by_day = {
+            row['completed_date'].isoformat(): row['count']
+            for row in tasks.filter(
+                status='done',
+                updated_at__date__gte=week_start,
+                updated_at__date__lt=week_end,
+            ).annotate(completed_date=TruncDate('updated_at')).values('completed_date').annotate(
+                count=Count('id')
+            )
+        }
+        daily_completed = [
+            completed_by_day.get((week_start + timezone.timedelta(days=offset)).isoformat(), 0)
+            for offset in range(7)
+        ]
 
         # Kutilayotgan applicationlar
         from apps.management.models import Application
@@ -151,6 +168,7 @@ class OverviewAnalyticsView(APIView):
                 'completed': completed_tasks,
                 'completion_rate': round(completed_tasks / total_tasks * 100, 1) if total_tasks > 0 else 0,
                 'completed_this_week': completed_this_week,
+                'daily_completed': daily_completed,
             },
             'applications': {
                 'pending': pending_applications,

@@ -96,17 +96,12 @@ export default function AnalyticsPage() {
     ? Math.round((projectAnalytics.tasks.completed / projectAnalytics.tasks.total) * 100)
     : 0
 
-  const momentumTrend = overview
-    ? [
-        Math.max(20, overview.tasks.completed_this_week - 18),
-        Math.max(24, overview.tasks.completed_this_week + 8),
-        Math.max(28, overview.tasks.completion_rate - 10),
-        overview.tasks.completion_rate,
-        Math.min(100, overview.tasks.completion_rate + 12),
-        Math.min(100, overview.tasks.completion_rate + 18),
-        Math.min(100, overview.tasks.completion_rate + 24),
-      ]
-    : [22, 26, 30, 40, 52, 58, 64]
+  const momentumTrend = overview?.tasks.daily_completed ?? [0, 0, 0, 0, 0, 0, 0]
+  const trendStart = momentumTrend[0] ?? 0
+  const trendEnd = momentumTrend[momentumTrend.length - 1] ?? 0
+  const trendPercentage = trendStart === 0
+    ? (trendEnd > 0 ? 100 : 0)
+    : Math.round(((trendEnd - trendStart) / trendStart) * 100)
 
   const trendPath = makeTrendPath(momentumTrend, 260, 110)
 
@@ -318,7 +313,9 @@ export default function AnalyticsPage() {
                   <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
                     <div className="mb-3 flex items-center justify-between">
                       <p className="text-sm text-slate-400">Trend</p>
-                      <span className="text-xs font-medium text-emerald">+{Math.max(5, Math.round((momentumTrend[momentumTrend.length - 1] - momentumTrend[0]) / momentumTrend[0] * 100))}%</span>
+                      <span className={`text-xs font-medium ${trendPercentage >= 0 ? 'text-emerald' : 'text-rose-400'}`}>
+                        {trendPercentage > 0 ? '+' : ''}{trendPercentage}%
+                      </span>
                     </div>
                     <svg viewBox="0 0 260 110" className="h-28 w-full overflow-visible">
                       <defs>

@@ -167,6 +167,7 @@ export type AnalyticsOverviewResponse = {
     completed: number
     completion_rate: number
     completed_this_week: number
+    daily_completed: number[]
   }
   applications: {
     pending: number

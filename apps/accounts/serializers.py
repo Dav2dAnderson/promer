@@ -64,6 +64,11 @@ class CustomRegisterSerializer(RegisterSerializer):
 
 class ManagerRequestSerializer(serializers.ModelSerializer):
     user = CustomUserSerializer(read_only=True)
+    status = serializers.SerializerMethodField()
+
     class Meta:
         model = ManagerRequest
-        fields = ('id', 'reason', 'user')
+        fields = ('id', 'reason', 'user', 'status', 'created_at')
+
+    def get_status(self, obj):
+        return 'approved' if obj.is_approved else 'pending'
