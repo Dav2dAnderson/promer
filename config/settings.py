@@ -33,8 +33,17 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://0.0.0.0:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 CORS_ALLOW_CREDENTIALS = True
+
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
 
 
 # Application definition
@@ -74,6 +83,7 @@ INSTALLED_APPS = [
     'apps.management',
     'apps.notifications',
     'apps.analytics',
+    'apps._github',
 ]
 
 SITE_ID = 1
@@ -81,6 +91,7 @@ SITE_ID = 1
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'dj_rest_auth.jwt_auth.JWTCookieAuthentication',
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
@@ -108,6 +119,21 @@ AUTHENTICATION_BACKENDS = [
     # Django-allauth orqali email bilan kirish uchun maxsus backend
     'allauth.account.auth_backends.AuthenticationBackend',
 ]
+
+GITHUB_CLIENT_ID = config('GITHUB_CLIENT_ID')
+GITHUB_CLIENT_SECRET = config('GITHUB_CLIENT_SECRET')
+BACKEND_URL = config('BACKEND_URL', default='http://127.0.0.1:8000').rstrip('/')
+GITHUB_WEBHOOK_URL = config(
+    'GITHUB_WEBHOOK_URL',
+    default=f'{BACKEND_URL}/api/github/webhook/',
+).rstrip('/') + '/'
+GITHUB_REDIRECT_URI = config(
+    'GITHUB_REDIRECT_URI',
+    default=f'{BACKEND_URL}/api/github/callback/',
+)
+FRONTEND_URL = config('FRONTEND_URL', default='http://localhost:3000').rstrip('/')
+
+SOCIAL_AUTH_GITHUB_SCOPE = ['repo', 'admin:repo_hook']
 
 # dj-rest-auth sozlamalari
 REST_USE_JWT = True

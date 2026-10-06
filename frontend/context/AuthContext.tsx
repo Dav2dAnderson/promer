@@ -1,7 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useState, useEffect } from 'react'
-import api, { setToken, getToken } from '@/lib/axios'
+import api, { getToken, setToken } from '@/lib/axios'
 import type { User, LoginRequest, RegisterRequest, AuthResponse, CreateManagerRequest } from '@/types'
 
 interface AuthContextType {
@@ -13,6 +13,9 @@ interface AuthContextType {
   logout: () => void
   updateUser: (updates: Partial<User>) => Promise<void>
   requestManagerAccess: (data: CreateManagerRequest) => Promise<void>
+  githubLogin: () => void
+  authError: string | null
+  setUser: (user: User | null) => void
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -20,22 +23,44 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [authError, setAuthError] = useState<string | null>(null)
 
   useEffect(() => {
+    // Check for OAuth errors in URL
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const error = urlParams.get('error')
+
+      if (error === 'github_denied') {
+        setAuthError('GitHub authorization was denied')
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname)
+      } else if (error === 'auth_failed') {
+        setAuthError('GitHub authentication failed')
+        // Clean up URL
+        window.history.replaceState({}, '', window.location.pathname)
+      }
+    }
+
     // Check if user is already logged in by fetching current user
     const checkAuth = async () => {
       const token = getToken()
-      if (token) {
-        try {
-          const response = await api.get<User>('/accounts/user/')
-          setUser(response.data)
-        } catch (error) {
-          // Token might be invalid, clear it
+      if (!token) {
+        setIsLoading(false)
+        return
+      }
+
+      try {
+        const response = await api.get<User>('/accounts/user/')
+        setUser(response.data)
+      } catch (error) {
+        if (getToken() === token) {
           setToken('')
           setUser(null)
         }
+      } finally {
+        setIsLoading(false)
       }
-      setIsLoading(false)
     }
 
     checkAuth()
@@ -44,7 +69,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const login = async (credentials: LoginRequest) => {
     const response = await api.post<AuthResponse>('/accounts/login/', credentials)
     const { access, user: userData } = response.data
-    
+
     setToken(access)
     setUser(userData)
   }
@@ -73,6 +98,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await api.post('/accounts/manager-request/', data)
   }
 
+  const githubLogin = () => {
+    // Redirect to backend OAuth start endpoint
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:8000'
+    window.location.href = `${backendUrl}/api/github/login/`
+  }
+
   const value: AuthContextType = {
     user,
     isLoading,
@@ -82,6 +113,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout,
     updateUser,
     requestManagerAccess,
+    githubLogin,
+    authError,
+    setUser,
   }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

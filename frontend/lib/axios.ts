@@ -6,7 +6,6 @@ let accessToken = ''
 const setCookie = (name: string, value: string) => {
   if (typeof document === 'undefined') return
   const secure = location.protocol === 'https:' ? '; Secure' : ''
-  // Use SameSite=Lax to allow top-level navigation while protecting CSRF
   document.cookie = `${name}=${encodeURIComponent(value)}; Path=/; SameSite=Lax${secure}`
 }
 
@@ -22,7 +21,6 @@ export const setToken = (t: string) => {
     if (t) {
       setCookie(COOKIE_TOKEN_KEY, t)
     } else {
-      // Remove cookie by setting past expiry
       setCookie(COOKIE_TOKEN_KEY, '')
       try {
         document.cookie = `${COOKIE_TOKEN_KEY}=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT`
@@ -50,6 +48,7 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 })
 
 api.interceptors.request.use((config) => {
@@ -64,9 +63,18 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired or invalid, clear it
+      const requestAuthorization = error.config?.headers?.Authorization
+      const currentToken = getToken()
+      const currentAuthorization = currentToken ? `Bearer ${currentToken}` : undefined
+
+      if (requestAuthorization !== currentAuthorization) {
+        return Promise.reject(error)
+      }
+
+      // Token expired or invalid, clear local token
       setToken('')
-      if (typeof window !== 'undefined') {
+      // Only redirect if not already on login page to avoid redirect loops
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
         window.location.href = '/login'
       }
     }

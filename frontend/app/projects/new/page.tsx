@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { MainLayout } from '@/components/layout/MainLayout'
 import { Button } from '@/components/ui/Button'
@@ -10,6 +10,15 @@ import { useAuth } from '@/context/AuthContext'
 import api from '@/lib/axios'
 import type { CreateProjectRequest } from '@/types'
 
+type GitHubRepository = {
+  id: number
+  name: string
+  full_name: string
+  description: string | null
+  private: boolean
+  url: string
+}
+
 export default function NewProjectPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -18,8 +27,37 @@ export default function NewProjectPage() {
     description: '',
     is_public: false,
   })
+  const [repositories, setRepositories] = useState<GitHubRepository[]>([])
+  const [selectedRepository, setSelectedRepository] = useState('')
+  const [isLoadingRepositories, setIsLoadingRepositories] = useState(true)
+  const [repositoryError, setRepositoryError] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let isActive = true
+
+    api.get<GitHubRepository[]>('/github/repos/')
+      .then((res) => {
+        if (isActive) setRepositories(res.data)
+      })
+      .catch((err: any) => {
+        if (isActive) {
+          setRepositoryError(
+            err.response?.data?.error ||
+            err.response?.data?.detail ||
+            'Could not load GitHub repositories.'
+          )
+        }
+      })
+      .finally(() => {
+        if (isActive) setIsLoadingRepositories(false)
+      })
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,8 +66,18 @@ export default function NewProjectPage() {
     setIsSubmitting(true)
     setError(null)
     try {
-      const res = await api.post('/management/projects/', formData)
-      router.push(`/projects/${res.data.slug}`)
+      if (selectedRepository) {
+        const res = await api.post('/github/connect-repo/', {
+          repo_full_name: selectedRepository,
+          project_name: formData.name.trim(),
+          description: formData.description.trim(),
+          is_public: formData.is_public,
+        })
+        router.push(`/projects/${res.data.project.slug}`)
+      } else {
+        const res = await api.post('/management/projects/', formData)
+        router.push(`/projects/${res.data.slug}`)
+      }
     } catch (err: any) {
       console.error('Failed to create project:', err)
       setError(err.response?.data?.detail || 'Failed to create project. Please try again.')
@@ -83,6 +131,45 @@ export default function NewProjectPage() {
                   className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all"
                   required
                 />
+              </div>
+              <div>
+                <label htmlFor="github_repository" className="block text-sm font-medium text-gray-300 mb-2">
+                  GitHub Repository
+                </label>
+                <select
+                  id="github_repository"
+                  value={selectedRepository}
+                  onChange={(e) => {
+                    const repository = repositories.find((item) => item.full_name === e.target.value)
+                    setSelectedRepository(e.target.value)
+                    if (repository) {
+                      setFormData((current) => ({
+                        ...current,
+                        name: repository.name,
+                        description: repository.description || '',
+                      }))
+                    }
+                  }}
+                  disabled={isLoadingRepositories || repositories.length === 0}
+                  className="w-full px-4 py-2.5 bg-background border border-border rounded-lg text-white focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent transition-all disabled:opacity-60"
+                >
+                  <option value="">
+                    {isLoadingRepositories ? 'Loading repositories...' : 'Create without a repository'}
+                  </option>
+                  {repositories.map((repository) => (
+                    <option key={repository.id} value={repository.full_name}>
+                      {repository.full_name}{repository.private ? ' (Private)' : ' (Public)'}
+                    </option>
+                  ))}
+                </select>
+                {repositoryError && (
+                  <p className="mt-2 text-sm text-amber-400">
+                    GitHub repositories unavailable: {repositoryError}
+                  </p>
+                )}
+                {!isLoadingRepositories && !repositoryError && repositories.length === 0 && (
+                  <p className="mt-2 text-sm text-gray-400">No GitHub repositories are available for this account.</p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-2">

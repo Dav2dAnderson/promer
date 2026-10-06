@@ -8,6 +8,7 @@ from base.models import BaseModel
 class CustomUser(AbstractUser):
     phone_number = models.CharField(max_length=20) # productiondan oldin unique = True qo'shilsin\
     github_username = models.CharField(max_length=100, null=True, blank=True)
+    github_access_token = models.TextField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     is_manager = models.BooleanField(default=False)
