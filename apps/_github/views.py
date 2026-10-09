@@ -125,6 +125,7 @@ class GitHubOAuthCallbackView(APIView):
                 'first_name': result['user'].first_name,
                 'last_name': result['user'].last_name,
                 'is_manager': result['user'].is_manager,
+                'phone_number': result['user'].phone_number
             },
         }, timeout=60)  # 1 minute expiry
 

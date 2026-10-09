@@ -44,8 +44,8 @@ export default function AuthCallbackPage() {
         // Set user data
         setUser(data.user)
 
-        // Redirect to dashboard
-        router.push('/dashboard')
+        // Collect required account details before entering the app.
+        router.push(data.user.phone_number?.trim() ? '/dashboard' : '/complete-profile')
       } catch (error) {
         console.error('OAuth callback error:', error)
         router.push('/login?error=auth_failed')

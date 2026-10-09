@@ -13,14 +13,16 @@ interface MainLayoutProps {
 }
 
 export function MainLayout({ children, breadcrumb = [] }: MainLayoutProps) {
-  const { isAuthenticated, isLoading } = useAuth()
+  const { user, isAuthenticated, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push('/login')
+      router.replace('/login')
+    } else if (!isLoading && isAuthenticated && !user?.phone_number?.trim()) {
+      router.replace('/complete-profile')
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router, user?.phone_number])
 
   if (isLoading) {
     return (
@@ -30,7 +32,7 @@ export function MainLayout({ children, breadcrumb = [] }: MainLayoutProps) {
     )
   }
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !user?.phone_number?.trim()) {
     return null
   }
 
