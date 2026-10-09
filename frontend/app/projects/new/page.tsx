@@ -79,8 +79,11 @@ export default function NewProjectPage() {
         router.push(`/projects/${res.data.slug}`)
       }
     } catch (err: any) {
-      console.error('Failed to create project:', err)
-      setError(err.response?.data?.detail || 'Failed to create project. Please try again.')
+      setError(
+        err.response?.data?.error ||
+        err.response?.data?.detail ||
+        'Failed to create project. Please try again.'
+      )
     } finally {
       setIsSubmitting(false)
     }
